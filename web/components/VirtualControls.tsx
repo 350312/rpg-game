@@ -1,6 +1,6 @@
 import React from 'react';
 import { GameEngine } from '../game/engine';
-import { ArrowUp, ArrowDown, ArrowLeft, ArrowRight, Shield, Flame, Sword, Backpack, Compass } from 'lucide-react';
+import { ArrowUp, ArrowDown, ArrowLeft, ArrowRight, Shield, Flame, Sword, Backpack, Compass, MessageSquare } from 'lucide-react';
 
 interface VirtualControlsProps {
   game: GameEngine;
@@ -9,6 +9,8 @@ interface VirtualControlsProps {
 }
 
 export const VirtualControls: React.FC<VirtualControlsProps> = ({ game, onOpenInventory, onToggleMiniMap }) => {
+  const isInteractable = game.hasNearbyInteractable();
+
   const handleKeyStart = (code: string) => {
     game.keys[code] = true;
   };
@@ -101,14 +103,33 @@ export const VirtualControls: React.FC<VirtualControlsProps> = ({ game, onOpenIn
             <span className="text-[9px]">GUARD</span>
           </button>
 
-          {/* Attack / Interact */}
+          {/* Attack / Interact Button */}
           <button
-            onPointerDown={() => handleKeyStart('Enter')}
-            onPointerUp={() => handleKeyEnd('Enter')}
-            className="w-16 h-16 bg-red-800/90 active:bg-red-600 border-2 border-red-400/80 rounded-full flex flex-col items-center justify-center text-white text-xs font-bold shadow-xl"
+            onPointerDown={(e) => {
+              e.preventDefault();
+              game.triggerAction();
+            }}
+            onClick={(e) => {
+              e.preventDefault();
+              game.triggerAction();
+            }}
+            className={`w-16 h-16 ${
+              isInteractable
+                ? 'bg-amber-600/95 active:bg-amber-500 border-amber-300 ring-2 ring-amber-400/50'
+                : 'bg-red-800/90 active:bg-red-600 border-red-400/80'
+            } border-2 rounded-full flex flex-col items-center justify-center text-white text-xs font-bold shadow-xl transition-all transform active:scale-95`}
           >
-            <Sword className="w-6 h-6 mb-0.5" />
-            <span className="text-[10px]">ATTACK</span>
+            {isInteractable ? (
+              <>
+                <MessageSquare className="w-6 h-6 mb-0.5 text-amber-100" />
+                <span className="text-[10px] text-amber-100 font-extrabold tracking-wider">TALK</span>
+              </>
+            ) : (
+              <>
+                <Sword className="w-6 h-6 mb-0.5" />
+                <span className="text-[10px]">ATTACK</span>
+              </>
+            )}
           </button>
         </div>
       </div>

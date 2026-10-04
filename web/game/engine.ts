@@ -496,19 +496,10 @@ export class GameEngine {
       return;
     }
 
-    // Check attack trigger
+    // Check attack / enter trigger
     if (this.keys['Enter']) {
-      // First check if there is an NPC or interactive object to talk/open
-      if (this.interactWithNearby()) {
-        this.keys['Enter'] = false;
-        return;
-      }
-      // Otherwise swing weapon
-      this.player.attacking = true;
-      this.player.attackTimer = 0;
       this.keys['Enter'] = false;
-      sounds.playSE('swingweapon');
-      this.checkPlayerAttackHit();
+      this.triggerAction();
       return;
     }
 
@@ -973,9 +964,63 @@ export class GameEngine {
     });
   }
 
-  // Interacting with nearby objects/NPCs on Enter key
+  // Centralized action trigger for Attack / Talk / Advance Dialogue
+  triggerAction(): void {
+    // 1. Advance or dismiss dialogue if dialogue window is open
+    if (this.gameState === GameState.DIALOGUE) {
+      sounds.playSE('cursor');
+      this.gameState = GameState.PLAY;
+      this.onStateChange();
+      return;
+    }
+
+    if (this.gameState !== GameState.PLAY) return;
+
+    // 2. Check if there is an NPC, chest, or door in range to talk or open
+    if (this.interactWithNearby()) {
+      return;
+    }
+
+    // 3. Otherwise execute weapon attack
+    if (!this.player.attacking) {
+      this.player.attacking = true;
+      this.player.attackTimer = 0;
+      sounds.playSE('swingweapon');
+      this.checkPlayerAttackHit();
+    }
+  }
+
+  // Quick check for UI prompts (whether an interactable NPC or chest is in range)
+  hasNearbyInteractable(): boolean {
+    if (this.gameState !== GameState.PLAY) return false;
+    const pCenterX = this.player.worldX + TILE_SIZE / 2;
+    const pCenterY = this.player.worldY + TILE_SIZE / 2;
+
+    for (const npc of this.npcs) {
+      if (npc.map !== this.currentMap) continue;
+      const nCenterX = npc.worldX + TILE_SIZE / 2;
+      const nCenterY = npc.worldY + TILE_SIZE / 2;
+      if (Math.hypot(pCenterX - nCenterX, pCenterY - nCenterY) < 68) {
+        return true;
+      }
+    }
+
+    for (const obj of this.objects) {
+      if (obj.map !== this.currentMap || obj.destroyed) continue;
+      if (obj.type === 'chest' && !obj.opened) {
+        const oCenterX = obj.worldX + TILE_SIZE / 2;
+        const oCenterY = obj.worldY + TILE_SIZE / 2;
+        if (Math.hypot(pCenterX - oCenterX, pCenterY - oCenterY) < 68) {
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  // Interacting with nearby objects/NPCs on Enter key or Attack button
   interactWithNearby(): boolean {
-    const reach = 40;
+    const reach = 52;
     let targetX = this.player.worldX;
     let targetY = this.player.worldY;
     if (this.player.direction === 'up') targetY -= reach;
@@ -983,13 +1028,26 @@ export class GameEngine {
     if (this.player.direction === 'left') targetX -= reach;
     if (this.player.direction === 'right') targetX += reach;
 
-    const hitBox: Rect = { x: targetX, y: targetY, width: TILE_SIZE, height: TILE_SIZE };
+    // Use a slightly larger interaction box (56x56) to allow easy alignment
+    const hitBox: Rect = { x: targetX - 4, y: targetY - 4, width: TILE_SIZE + 8, height: TILE_SIZE + 8 };
+    const pCenterX = this.player.worldX + TILE_SIZE / 2;
+    const pCenterY = this.player.worldY + TILE_SIZE / 2;
 
-    // 1. Check NPCs
+    // 1. Check NPCs (directional hitBox OR close proximity within 68px)
     for (const npc of this.npcs) {
       if (npc.map !== this.currentMap) continue;
       const nBox: Rect = { x: npc.worldX, y: npc.worldY, width: TILE_SIZE, height: TILE_SIZE };
-      if (this.rectsIntersect(hitBox, nBox)) {
+      const nCenterX = npc.worldX + TILE_SIZE / 2;
+      const nCenterY = npc.worldY + TILE_SIZE / 2;
+      const dist = Math.hypot(pCenterX - nCenterX, pCenterY - nCenterY);
+
+      if (this.rectsIntersect(hitBox, nBox) || dist < 68) {
+        // Face the player when talking
+        if (this.player.direction === 'up') npc.direction = 'down';
+        else if (this.player.direction === 'down') npc.direction = 'up';
+        else if (this.player.direction === 'left') npc.direction = 'right';
+        else if (this.player.direction === 'right') npc.direction = 'left';
+
         if (npc.isShop) {
           this.activeShopNPC = npc;
           this.gameState = GameState.TRADE;

@@ -327,6 +327,14 @@ public class KeyHandler implements KeyListener {
 
     /**
      * Clears boolean flags when a key is released.
+     * 
+     * EXPLANATION FOR SUPERVISOR:
+     * - Movement keys (WASD) and Guard (Space) are continuous held inputs, so they are
+     *   cleared when released.
+     * - enterPressed is a single-shot push-button trigger. It is consumed and reset
+     *   directly inside Player.java (line 271: `keyH.enterPressed = false;`) and the UI.
+     * - Therefore, enterPressed is NOT cleared here, preventing fast key releases from
+     *   accidentally canceling NPC interactions or attacks before the 60 FPS tick reads them!
      */
     @Override
     public void keyReleased(KeyEvent e) {
@@ -336,7 +344,7 @@ public class KeyHandler implements KeyListener {
         if (code == KeyEvent.VK_A || code == KeyEvent.VK_LEFT) leftPressed = false;
         if (code == KeyEvent.VK_D || code == KeyEvent.VK_RIGHT) rightPressed = false;
         if (code == KeyEvent.VK_F) shotKeyPressed = false;
-        if (code == KeyEvent.VK_ENTER) enterPressed = false;
+        // if (code == KeyEvent.VK_ENTER) enterPressed = false; // Intentionally commented: push button consumed by game loop
         if (code == KeyEvent.VK_SPACE) spacePressed = false;
     }
 }

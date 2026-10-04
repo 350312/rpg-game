@@ -46,11 +46,21 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
         return;
       }
 
+      if (e.code === 'Enter' || e.code === 'NumpadEnter') {
+        if (game.gameState === GameState.DIALOGUE) {
+          game.triggerAction();
+          return;
+        }
+      }
+
       game.keys[e.code] = true;
     };
 
     const handleKeyUp = (e: KeyboardEvent) => {
-      game.keys[e.code] = false;
+      // Do not prematurely wipe Enter if not yet consumed
+      if (e.code !== 'Enter' && e.code !== 'NumpadEnter') {
+        game.keys[e.code] = false;
+      }
     };
 
     window.addEventListener('keydown', handleKeyDown);
