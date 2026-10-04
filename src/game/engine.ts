@@ -3,7 +3,7 @@ import { ITEMS, createItem } from './items';
 import { TILE_DATA, MAP_CONFIGS, loadMapGrid } from './maps';
 import { assets } from './assets';
 import { sounds } from './sound';
-// heyyo chimpotlaaaaaaaaaa
+
 export const TILE_SIZE = 48;
 export const SCREEN_WIDTH = 960;
 export const SCREEN_HEIGHT = 576;
