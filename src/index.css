@@ -1,0 +1,31 @@
+@import "tailwindcss";
+
+@font-face {
+  font-family: 'MaruMonica';
+  src: url('/res/font/x12y16pxMaruMonica.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Purisa';
+  src: url('/res/font/Purisa Bold.ttf') format('truetype');
+  font-weight: bold;
+  font-style: normal;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  background-color: #0c0d14;
+  color: #fff;
+  font-family: 'MaruMonica', system-ui, -apple-system, sans-serif;
+  image-rendering: pixelated;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+canvas {
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
