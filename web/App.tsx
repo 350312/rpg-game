@@ -44,8 +44,8 @@ export const App: React.FC = () => {
           alt="Loading..."
           className="w-16 h-16 object-contain pixelated animate-bounce"
         />
-        <h2 className="text-xl md:text-2xl font-bold tracking-widest text-sky-400">
-          LOADING BLUE BOY ADVENTURE...
+        <h2 className="text-xl md:text-2xl font-bold tracking-widest text-emerald-400">
+          LOADING MONPURA TALES...
         </h2>
         <div className="w-48 h-2 bg-zinc-800 rounded-full overflow-hidden border border-white/20">
           <div className="w-full h-full bg-sky-500 animate-pulse" />

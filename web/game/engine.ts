@@ -73,6 +73,18 @@ export class GameEngine {
   public dayTime: number = 0; // 0..12000
   public dayState: 'day' | 'dusk' | 'night' | 'dawn' = 'day';
 
+  // Map Transitions & Events
+  public transitionStateCounter: number = 0;
+  public transitionAlpha: number = 0;
+  public targetTransitionMap: number = 0;
+  public targetTransitionCol: number = 0;
+  public targetTransitionRow: number = 0;
+  public targetTransitionMusic: 'theme' | 'merchant' | null = null;
+  public targetTransitionDirection: Direction | null = null;
+  public canTouchEvent: boolean = true;
+  public previousEventX: number = 0;
+  public previousEventY: number = 0;
+
   // Input states
   public keys: Record<string, boolean> = {};
 
@@ -391,6 +403,11 @@ export class GameEngine {
       createItem('potion_red', 2),
     ];
     this.bossDefeated = false;
+    this.transitionStateCounter = 0;
+    this.transitionAlpha = 0;
+    this.canTouchEvent = true;
+    this.previousEventX = this.player.worldX;
+    this.previousEventY = this.player.worldY;
     this.setupEntities();
     sounds.playMusic('theme');
     this.onStateChange();
@@ -452,6 +469,10 @@ export class GameEngine {
 
   // Update Game Logic Loop (60 FPS)
   update(): void {
+    if (this.gameState === GameState.TRANSITION) {
+      this.updateTransition();
+      return;
+    }
     if (this.gameState !== GameState.PLAY) return;
 
     this.updateDayTime();
@@ -1119,34 +1140,44 @@ export class GameEngine {
     const col = Math.floor((this.player.worldX + 24) / TILE_SIZE);
     const row = Math.floor((this.player.worldY + 24) / TILE_SIZE);
 
-    // Map 0 -> Map 1 (Merchant house): (10, 39)
+    // Distance check to reset canTouchEvent (must step away by at least 1 tile)
+    const xDist = Math.abs(this.player.worldX - this.previousEventX);
+    const yDist = Math.abs(this.player.worldY - this.previousEventY);
+    if (Math.max(xDist, yDist) > TILE_SIZE) {
+      this.canTouchEvent = true;
+    }
+
+    if (!this.canTouchEvent) return;
+
+    // Map 0 -> Map 1 (Merchant house doorway at 10, 39)
     if (this.currentMap === 0 && col === 10 && row === 39) {
-      this.teleport(1, 12, 13);
-      sounds.playMusic('merchant');
+      this.teleport(1, 12, 12, 'merchant', 'up');
     }
-    // Map 1 -> Map 0 (Outside): (12, 13)
+    // Map 1 -> Map 0 (Merchant shop exit at 12, 13)
     else if (this.currentMap === 1 && col === 12 && row === 13) {
-      this.teleport(0, 10, 39);
-      sounds.playMusic('theme');
+      this.teleport(0, 10, 40, 'theme', 'down');
     }
-    // Map 0 -> Map 2 (Dungeon B1): (12, 9)
+    // Map 0 -> Map 2 (Dungeon B1 entrance stairs at 12, 9)
     else if (this.currentMap === 0 && col === 12 && row === 9) {
-      this.teleport(2, 9, 41);
+      this.teleport(2, 9, 40, 'theme', 'up');
     }
-    // Map 2 -> Map 0 (Outside): (9, 41)
+    // Map 2 -> Map 0 (Dungeon B1 exit stairs at 9, 41)
     else if (this.currentMap === 2 && col === 9 && row === 41) {
-      this.teleport(0, 12, 9);
+      this.teleport(0, 12, 10, 'theme', 'down');
     }
-    // Map 2 -> Map 3 (Dungeon B2): (8, 7)
+    // Map 2 -> Map 3 (Dungeon B2 stairs at 8, 7)
     else if (this.currentMap === 2 && col === 8 && row === 7) {
-      this.teleport(3, 26, 41);
+      this.teleport(3, 26, 40, 'theme', 'up');
     }
-    // Map 3 -> Map 2 (Dungeon B1): (26, 41)
+    // Map 3 -> Map 2 (Dungeon B2 return stairs at 26, 41)
     else if (this.currentMap === 3 && col === 26 && row === 41) {
-      this.teleport(2, 8, 7);
+      this.teleport(2, 8, 8, 'theme', 'down');
     }
     // Healing Pool on Map 0 at (23, 12)
     else if (this.currentMap === 0 && col === 23 && row === 12 && (this.player.life < this.player.maxLife || this.player.mana < this.player.maxMana)) {
+      this.canTouchEvent = false;
+      this.previousEventX = this.player.worldX;
+      this.previousEventY = this.player.worldY;
       this.player.life = this.player.maxLife;
       this.player.mana = this.player.maxMana;
       sounds.playSE('powerup');
@@ -1155,6 +1186,9 @@ export class GameEngine {
     }
     // Damage Pit on Map 0 at (27, 16)
     else if (this.currentMap === 0 && col === 27 && row === 16 && this.player.invincibleTimer === 0) {
+      this.canTouchEvent = false;
+      this.previousEventX = this.player.worldX;
+      this.previousEventY = this.player.worldY;
       this.damagePlayer(2);
       this.dialogueSpeaker = 'Trap';
       this.dialogueText = 'You fell into a pit of spikes!';
@@ -1163,12 +1197,54 @@ export class GameEngine {
     }
   }
 
-  teleport(targetMap: number, col: number, row: number) {
-    this.currentMap = targetMap;
-    this.player.worldX = col * TILE_SIZE;
-    this.player.worldY = row * TILE_SIZE;
+  teleport(targetMap: number, col: number, row: number, music?: 'theme' | 'merchant', dir?: Direction) {
+    this.canTouchEvent = false;
+    this.gameState = GameState.TRANSITION;
+    this.transitionStateCounter = 0;
+    this.transitionAlpha = 0;
+    this.targetTransitionMap = targetMap;
+    this.targetTransitionCol = col;
+    this.targetTransitionRow = row;
+    this.targetTransitionMusic = music || null;
+    this.targetTransitionDirection = dir || null;
     sounds.playSE('stairs');
-    this.onStateChange();
+  }
+
+  updateTransition() {
+    this.transitionStateCounter++;
+    // Phase 1: Fade to black (1 to 14 frames)
+    if (this.transitionStateCounter <= 14) {
+      this.transitionAlpha = Math.min(1, this.transitionStateCounter / 14);
+    } 
+    // Midpoint (Frame 15): screen is completely black, change world & coordinates cleanly
+    else if (this.transitionStateCounter === 15) {
+      this.transitionAlpha = 1;
+      this.currentMap = this.targetTransitionMap;
+      this.player.worldX = this.targetTransitionCol * TILE_SIZE;
+      this.player.worldY = this.targetTransitionRow * TILE_SIZE;
+      if (this.targetTransitionDirection) {
+        this.player.direction = this.targetTransitionDirection;
+      }
+      this.previousEventX = this.player.worldX;
+      this.previousEventY = this.player.worldY;
+      this.player.moving = false;
+      this.projectiles = []; // Clear active projectiles across map bounds
+      if (this.targetTransitionMusic) {
+        sounds.playMusic(this.targetTransitionMusic);
+      }
+      this.onStateChange();
+    } 
+    // Phase 2: Fade in from black (16 to 28 frames)
+    else if (this.transitionStateCounter <= 28) {
+      this.transitionAlpha = Math.max(0, 1 - (this.transitionStateCounter - 15) / 13);
+    } 
+    // Complete transition
+    else {
+      this.transitionAlpha = 0;
+      this.transitionStateCounter = 0;
+      this.gameState = GameState.PLAY;
+      this.onStateChange();
+    }
   }
 
   checkPickupCollection() {

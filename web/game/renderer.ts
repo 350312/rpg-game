@@ -233,6 +233,12 @@ export class GameRenderer {
     if (game.miniMapOn) {
       this.drawMiniMap(ctx, game);
     }
+
+    // 12. Draw Smooth Map Transition Fade Screen
+    if (game.transitionAlpha > 0) {
+      ctx.fillStyle = `rgba(0, 0, 0, ${game.transitionAlpha})`;
+      ctx.fillRect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
+    }
   }
 
   drawMiniMap(ctx: CanvasRenderingContext2D, game: GameEngine) {
