@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { GameEngine } from '../game/engine';
 import { MAP_CONFIGS } from '../game/maps';
-import { Backpack, Compass, Settings, Shield, Sword, Maximize, Minimize } from 'lucide-react';
+import { Backpack, Compass, Settings, Shield, Sword, Maximize, Minimize, Building2, CheckCircle2, MapPin, X } from 'lucide-react';
 
 interface HUDProps {
   game: GameEngine;
@@ -14,6 +14,7 @@ export const HUD: React.FC<HUDProps> = ({ game, onOpenInventory, onOpenOptions, 
   const player = game.player;
   const currentAreaName = MAP_CONFIGS.find((m) => m.id === game.currentMap)?.name || 'Unknown';
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [showLandmarksModal, setShowLandmarksModal] = useState(false);
 
   useEffect(() => {
     const handleFullscreenChange = () => {
@@ -97,11 +98,114 @@ export const HUD: React.FC<HUDProps> = ({ game, onOpenInventory, onOpenOptions, 
             Lv.<span className="text-amber-400 font-bold">{player.level}</span>
           </span>
           <span className="text-zinc-400">|</span>
-          <span className="truncate max-w-[70px] sm:max-w-[110px] text-zinc-300 font-sans" title={currentAreaName}>
-            📍 {currentAreaName}
-          </span>
+          {(() => {
+            const loc = game.getLocationInfo();
+            const count = game.collectedLocations.size;
+            return (
+              <button
+                onClick={() => setShowLandmarksModal(!showLandmarksModal)}
+                className="flex items-center gap-1 truncate max-w-[120px] sm:max-w-[160px] text-zinc-200 font-sans font-medium hover:text-emerald-300 transition text-left cursor-pointer active:scale-95"
+                title={`${loc.name} - ${loc.subtitle}\nClick to view Campus Buildings Guide`}
+              >
+                <span className="truncate">{loc.icon} {loc.name}</span>
+                <span className="text-[9px] px-1 py-0.5 rounded bg-emerald-950/80 border border-emerald-500/40 text-emerald-300 font-mono shrink-0">
+                  {count}/4
+                </span>
+              </button>
+            );
+          })()}
         </div>
       </div>
+
+      {/* Campus Buildings & Locations Guide Modal */}
+      {showLandmarksModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm pointer-events-auto">
+          <div className="bg-zinc-950/95 border border-white/20 rounded-2xl p-4 sm:p-6 w-full max-w-md shadow-2xl text-white font-sans animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between pb-3 border-b border-white/10 mb-4">
+              <div className="flex items-center gap-2">
+                <Building2 className="w-5 h-5 text-emerald-400" />
+                <h3 className="font-bold text-base sm:text-lg text-emerald-400 tracking-wide font-mono">
+                  CAMPUS LOCATIONS & BUILDINGS
+                </h3>
+              </div>
+              <button
+                onClick={() => setShowLandmarksModal(false)}
+                className="p-1 rounded-lg hover:bg-white/10 text-zinc-400 hover:text-white transition"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <p className="text-xs text-zinc-300 mb-3 font-mono">
+              Explore the campus to discover all 4 major buildings and landmark areas:
+            </p>
+
+            <div className="space-y-2 mb-4">
+              {game.campusBuildings.map((b) => {
+                const isCollected = game.collectedLocations.has(b.name);
+                return (
+                  <div
+                    key={b.id}
+                    className={`flex items-start justify-between p-2.5 rounded-xl border transition ${
+                      isCollected
+                        ? 'bg-emerald-950/40 border-emerald-500/40 text-emerald-200'
+                        : 'bg-zinc-900/60 border-white/10 text-zinc-300'
+                    }`}
+                  >
+                    <div className="flex items-start gap-2.5">
+                      <span className="text-lg mt-0.5">{b.icon || '🏛️'}</span>
+                      <div>
+                        <div className="font-bold text-sm flex items-center gap-1.5 font-mono">
+                          {b.name}
+                          {isCollected && (
+                            <span className="text-[10px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 px-1.5 py-0.2 rounded font-sans">
+                              Discovered
+                            </span>
+                          )}
+                        </div>
+                        <div className="text-xs text-zinc-400">{b.fullName}</div>
+                      </div>
+                    </div>
+                    {isCollected ? (
+                      <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0 mt-0.5" />
+                    ) : (
+                      <MapPin className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Special Landmarks */}
+            <div className="pt-2 border-t border-white/10 space-y-2 mb-4">
+              <div className="flex items-start gap-2.5 p-2 rounded-xl bg-zinc-900/40 border border-white/5 text-xs text-zinc-300">
+                <span className="text-base">🌸</span>
+                <div>
+                  <div className="font-bold text-emerald-300 font-mono">Central Garden Yard</div>
+                  <div className="text-zinc-400">Lush botanical courtyard. The **Hammer** is located here on the lawn!</div>
+                </div>
+              </div>
+              <div className="flex items-start gap-2.5 p-2 rounded-xl bg-zinc-900/40 border border-white/5 text-xs text-zinc-300">
+                <span className="text-base">⚔️</span>
+                <div>
+                  <div className="font-bold text-amber-300 font-mono">Third Place Arena</div>
+                  <div className="text-zinc-400">East lakeside pavilion student arena where battle slimes & orc warriors train!</div>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between text-xs text-zinc-400 font-mono pt-2 border-t border-white/10">
+              <span>Buildings Visited: {game.collectedLocations.size} / 4</span>
+              <button
+                onClick={() => setShowLandmarksModal(false)}
+                className="px-4 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-semibold transition"
+              >
+                Got It
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Right: Quick Equipment & Utility Buttons */}
       <div className="flex items-center gap-1.5 sm:gap-2 pointer-events-auto">

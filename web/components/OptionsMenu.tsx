@@ -121,6 +121,42 @@ export const OptionsMenu: React.FC<OptionsMenuProps> = ({ game, onClose, onResta
             </div>
           </div>
 
+          {/* Gameplay & Movement Controls */}
+          <div className="bg-black/40 border border-white/10 rounded-lg p-3 flex flex-col gap-2.5 text-xs">
+            <span className="text-zinc-300 font-bold">Movement Speed</span>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                onClick={() => {
+                  game.movementSpeedSetting = 'normal';
+                  game.onStateChange();
+                }}
+                className={`py-1.5 px-2 rounded border text-xs font-mono transition cursor-pointer ${
+                  game.movementSpeedSetting === 'normal'
+                    ? 'bg-emerald-500/30 border-emerald-400 text-emerald-300 font-bold'
+                    : 'bg-white/5 border-white/10 text-zinc-400 hover:text-white'
+                }`}
+              >
+                Normal (Precise)
+              </button>
+              <button
+                onClick={() => {
+                  game.movementSpeedSetting = 'brisk';
+                  game.onStateChange();
+                }}
+                className={`py-1.5 px-2 rounded border text-xs font-mono transition cursor-pointer ${
+                  game.movementSpeedSetting === 'brisk'
+                    ? 'bg-amber-500/30 border-amber-400 text-amber-300 font-bold'
+                    : 'bg-white/5 border-white/10 text-zinc-400 hover:text-white'
+                }`}
+              >
+                Brisk (Fast)
+              </button>
+            </div>
+            <p className="text-[10px] text-zinc-400">
+              Hold <kbd className="px-1 py-0.5 rounded bg-zinc-800 border border-zinc-600 text-zinc-200">Shift</kbd> anytime to sprint, or tap the center D-pad button on mobile.
+            </p>
+          </div>
+
           {/* Action Buttons */}
           <div className="flex flex-col gap-2">
             <button
@@ -147,6 +183,7 @@ export const OptionsMenu: React.FC<OptionsMenuProps> = ({ game, onClose, onResta
             </div>
             <div className="grid grid-cols-2 gap-x-2 gap-y-1 text-zinc-400">
               <div><span className="text-zinc-200 font-bold">W, A, S, D</span> : Move</div>
+              <div><span className="text-zinc-200 font-bold">SHIFT</span> : Sprint / Run</div>
               <div><span className="text-zinc-200 font-bold">ENTER</span> : Attack / Talk</div>
               <div><span className="text-zinc-200 font-bold">SPACE</span> : Raise Shield</div>
               <div><span className="text-zinc-200 font-bold">F</span> : Cast Fireball</div>

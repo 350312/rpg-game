@@ -146,8 +146,23 @@ export const VirtualControls: React.FC<VirtualControlsProps> = ({ game }) => {
           <ArrowRight className="w-5 h-5" />
         </button>
 
-        {/* Center Cross Accent */}
-        <div className="w-6 h-6 rounded-full bg-zinc-900/80 border border-white/10 pointer-events-none" />
+        {/* Center Walk/Run Sprint Toggle */}
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            game.isRunToggled = !game.isRunToggled;
+            game.onStateChange();
+          }}
+          className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full border flex items-center justify-center text-[8px] sm:text-[9px] font-mono font-bold transition shadow-md active:scale-90 cursor-pointer pointer-events-auto ${
+            game.isRunToggled
+              ? 'bg-amber-500 border-amber-300 text-black font-extrabold shadow-amber-500/30'
+              : 'bg-zinc-800/95 border-white/30 text-zinc-300 hover:text-white'
+          }`}
+          title={game.isRunToggled ? 'Current: RUNNING (Click to Walk)' : 'Current: WALKING (Click to Run)'}
+          aria-label="Toggle Walk/Run"
+        >
+          {game.isRunToggled ? 'RUN' : 'WALK'}
+        </button>
       </div>
 
       {/* Right: Console-Style Action Arc (Thumb Friendly) */}

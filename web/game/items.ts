@@ -14,10 +14,10 @@ export const ITEMS: Record<string, Item> = {
   },
   axe: {
     id: 'axe',
-    name: 'Woodcutter Axe',
+    name: 'Hammer',
     type: 'weapon',
     icon: '/res/objects/axe.png',
-    description: '[Woodcutter Axe]\nA bit heavy, but can chop down dry trees!',
+    description: '[Hammer]\nFound in the Central Garden Yard. Can smash obstacles, chop down dry trees, and crush monster armor!',
     attackValue: 2,
     price: 75,
     motion1: 20,

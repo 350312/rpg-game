@@ -62,7 +62,7 @@ export async function loadMapGrid(url: string): Promise<number[][]> {
 }
 
 export const MAP_CONFIGS = [
-  { id: 0, name: 'Island World', url: '/res/maps/worldmap.txt', area: 'outside' },
+  { id: 0, name: 'Campus Lake & Boardwalk', url: '/res/maps/worldmap.txt', area: 'outside' },
   { id: 1, name: "Merchant's Shop", url: '/res/maps/indoor01.txt', area: 'indoor' },
   { id: 2, name: 'Dungeon B1', url: '/res/maps/dungeon01.txt', area: 'dungeon' },
   { id: 3, name: 'Dungeon B2 (Boss Chamber)', url: '/res/maps/dungeon02.txt', area: 'dungeon' },

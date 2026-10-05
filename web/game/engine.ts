@@ -18,11 +18,11 @@ export class GameEngine {
   // Player
   public player = {
     worldX: 23 * TILE_SIZE,
-    worldY: 21 * TILE_SIZE,
+    worldY: 25 * TILE_SIZE,
     screenX: SCREEN_WIDTH / 2 - TILE_SIZE / 2,
     screenY: SCREEN_HEIGHT / 2 - TILE_SIZE / 2,
-    speed: 4,
-    defaultSpeed: 4,
+    speed: 2.6,
+    defaultSpeed: 2.6,
     direction: 'down' as Direction,
     level: 1,
     maxLife: 6, // 3 hearts
@@ -70,8 +70,18 @@ export class GameEngine {
   public bossDefeated: boolean = false;
 
   // Day/Night and Environment
-  public dayTime: number = 0; // 0..12000
-  public dayState: 'day' | 'dusk' | 'night' | 'dawn' = 'day';
+  public dayTime: number = 6500; // Golden hour sunset (0..12000)
+  public dayState: 'day' | 'dusk' | 'night' | 'dawn' = 'dusk';
+  public lastLocationName: string = '';
+
+  // Discovered & Collected Campus Locations
+  public collectedLocations: Set<string> = new Set();
+  public campusBuildings = [
+    { id: 'fst', name: 'FST Building', fullName: 'Faculty of Science & Technology', shortTag: 'FST', icon: '💻', col: 11, row: 5 },
+    { id: 'fass', name: 'FASS Building', fullName: 'Faculty of Arts & Social Sciences', shortTag: 'FASS', icon: '📚', col: 24, row: 4 },
+    { id: 'fbs', name: 'FBS Building', fullName: 'Faculty of Business Studies', shortTag: 'FBS', icon: '📊', col: 37, row: 5 },
+    { id: 'fms', name: 'FMS Building', fullName: 'Faculty of Management Studies', shortTag: 'FMS', icon: '🏢', col: 10, row: 39 },
+  ];
 
   // Map Transitions & Events
   public transitionStateCounter: number = 0;
@@ -87,6 +97,8 @@ export class GameEngine {
 
   // Input states
   public keys: Record<string, boolean> = {};
+  public isRunToggled: boolean = false;
+  public movementSpeedSetting: 'normal' | 'brisk' = 'normal';
 
   // Callback to inform React UI
   public onStateChange: () => void = () => {};
@@ -118,15 +130,20 @@ export class GameEngine {
     this.particles = [];
     this.damageNumbers = [];
 
-    // Map 0: World Map Objects
+    // Map 0: Campus Objects (All on dry land near buildings and garden yard, none in the pond!)
     this.objects.push(
-      { id: 'axe_1', name: 'Axe', map: 0, worldX: 33 * TILE_SIZE, worldY: 7 * TILE_SIZE, image: '/res/objects/axe.png', solidArea: { x: 8, y: 8, width: 32, height: 32 }, collision: false, type: 'axe' },
-      { id: 'lantern_1', name: 'Lantern', map: 0, worldX: 31 * TILE_SIZE, worldY: 12 * TILE_SIZE, image: '/res/objects/lantern.png', solidArea: { x: 8, y: 8, width: 32, height: 32 }, collision: false, type: 'lantern' },
-      { id: 'tent_1', name: 'Tent', map: 0, worldX: 26 * TILE_SIZE, worldY: 16 * TILE_SIZE, image: '/res/objects/tent.png', solidArea: { x: 8, y: 8, width: 32, height: 32 }, collision: false, type: 'tent' },
-      { id: 'door_1', name: 'Door', map: 0, worldX: 14 * TILE_SIZE, worldY: 28 * TILE_SIZE, image: '/res/objects/door.png', solidArea: { x: 0, y: 0, width: 48, height: 48 }, collision: true, type: 'door' },
-      { id: 'door_2', name: 'Door', map: 0, worldX: 12 * TILE_SIZE, worldY: 12 * TILE_SIZE, image: '/res/objects/door.png', solidArea: { x: 0, y: 0, width: 48, height: 48 }, collision: true, type: 'door' },
-      { id: 'key_1', name: 'Key', map: 0, worldX: 22 * TILE_SIZE, worldY: 41 * TILE_SIZE, image: '/res/objects/key.png', solidArea: { x: 8, y: 8, width: 32, height: 32 }, collision: false, type: 'key' },
-      { id: 'key_2', name: 'Key', map: 0, worldX: 38 * TILE_SIZE, worldY: 40 * TILE_SIZE, image: '/res/objects/key.png', solidArea: { x: 8, y: 8, width: 32, height: 32 }, collision: false, type: 'key' },
+       // 1. Hammer in the Central Garden Yard (Dry land, botanical lawn!)
+       { id: 'axe_1', name: 'Hammer', map: 0, worldX: 24 * TILE_SIZE, worldY: 9 * TILE_SIZE, image: '/res/objects/axe.png', solidArea: { x: 8, y: 8, width: 32, height: 32 }, collision: false, type: 'axe' },
+       // 2. Lantern near FBS Building Plaza (Dry land terrace!)
+       { id: 'lantern_1', name: 'Lantern', map: 0, worldX: 36 * TILE_SIZE, worldY: 9 * TILE_SIZE, image: '/res/objects/lantern.png', solidArea: { x: 8, y: 8, width: 32, height: 32 }, collision: false, type: 'lantern' },
+       // 3. Tent on lawn outside FST Building (Dry land, NOT in the pond!)
+       { id: 'tent_1', name: 'Tent', map: 0, worldX: 14 * TILE_SIZE, worldY: 9 * TILE_SIZE, image: '/res/objects/tent.png', solidArea: { x: 8, y: 8, width: 32, height: 32 }, collision: false, type: 'tent' },
+       // 4. Key 1 near FASS Building entrance (North Garden path)
+       { id: 'key_1', name: 'Key', map: 0, worldX: 22 * TILE_SIZE, worldY: 7 * TILE_SIZE, image: '/res/objects/key.png', solidArea: { x: 8, y: 8, width: 32, height: 32 }, collision: false, type: 'key' },
+       // 5. Key 2 on South Promenade near FMS Building
+       { id: 'key_2', name: 'Key', map: 0, worldX: 11 * TILE_SIZE, worldY: 36 * TILE_SIZE, image: '/res/objects/key.png', solidArea: { x: 8, y: 8, width: 32, height: 32 }, collision: false, type: 'key' },
+       // 6. Security Door to FST Tech Lab Basement
+       { id: 'door_fst', name: 'Lab Security Door', map: 0, worldX: 11 * TILE_SIZE, worldY: 8 * TILE_SIZE, image: '/res/objects/door.png', solidArea: { x: 0, y: 0, width: 48, height: 48 }, collision: true, type: 'door' },
     );
 
     // Map 1: Merchant Shop Objects
@@ -149,11 +166,11 @@ export class GameEngine {
       { id: 'blue_gem_goal', name: 'Blue Gem', map: 3, worldX: 25 * TILE_SIZE, worldY: 8 * TILE_SIZE, image: '/res/objects/blueheart.png', solidArea: { x: 8, y: 8, width: 32, height: 32 }, collision: false, type: 'blue_heart' },
     );
 
-    // Interactive Tiles: Dry Trees on Map 0
+    // Interactive Tiles: Dry Trees placed on dry garden edges
     const treeCoords = [
-      [27, 12], [28, 12], [29, 12], [30, 12], [32, 12], [33, 12],
-      [18, 40], [17, 40], [16, 40], [15, 40], [14, 40], [13, 40], [10, 40],
-      [13, 41], [12, 41], [11, 41], [10, 41],
+      [19, 11], [27, 11], [20, 12], [28, 12],
+      [14, 38], [15, 38], [27, 39], [28, 39],
+      [32, 40], [33, 40], [37, 41], [38, 41],
     ];
     treeCoords.forEach(([col, row], idx) => {
       this.interactiveTiles.push({
@@ -210,18 +227,17 @@ export class GameEngine {
     // NPCs
     this.npcs.push({
       id: 'oldman',
-      name: 'Old Man',
+      name: 'Campus Professor',
       map: 0,
-      worldX: 21 * TILE_SIZE,
-      worldY: 21 * TILE_SIZE,
-      direction: 'down',
-      sprite: '/res/npc/oldman_down_1.png',
+      worldX: 26 * TILE_SIZE,
+      worldY: 24 * TILE_SIZE,
+      direction: 'left',
+      sprite: '/res/npc/oldman_left_1.png',
       solidArea: { x: 8, y: 16, width: 32, height: 32 },
       dialogues: [
-        'Hello, young adventurer!\nSo you have come seeking the legendary Blue Gem?',
-        'Beware of slimes and orcs wandering the island.\nPress Enter to strike with your sword, and Space to raise your shield!',
-        'You can chop down dry trees if you find a Woodcutter Axe,\nand break weak dungeon walls with a Pickaxe.',
-        'If you become weary, drink from the sacred healing spring to the north!',
+        'Welcome to the Monpura Campus Lake!\nThe golden sunset from this floating boardwalk is truly breathtaking.',
+        'Across this bridge to the north lies the Academic Plaza and Glass Towers.\nDeep below the West Tower is the Underground Tech Lab!',
+        'You can stroll across the water to the South Union Café, or rest by the lotus fountain.\nPress Enter to interact or strike, and Space to raise your shield.',
       ],
       dialogueIndex: 0,
     });
@@ -258,24 +274,26 @@ export class GameEngine {
       });
     });
 
-    // Monsters: Map 0
-    const slimeCoords = [[23, 36], [23, 37], [24, 37], [34, 42], [38, 42]];
-    slimeCoords.forEach(([col, row], idx) => {
+    // Monsters: Stationed inside the THIRD PLACE ARENA (Columns 36 to 42, Rows 20 to 28)
+    const thirdPlaceSlimes = [
+      [37, 21], [40, 21], [37, 24], [41, 24], [38, 26], [40, 26]
+    ];
+    thirdPlaceSlimes.forEach(([col, row], idx) => {
       this.monsters.push({
-        id: `green_slime_${idx}`,
-        name: 'Green Slime',
+        id: `arena_slime_${idx}`,
+        name: idx % 2 === 0 ? 'Arena Green Slime' : 'Arena Red Slime',
         map: 0,
         worldX: col * TILE_SIZE,
         worldY: row * TILE_SIZE,
         direction: 'down',
         speed: 1,
-        maxLife: 4,
-        life: 4,
+        maxLife: 6,
+        life: 6,
         attack: 2,
         defense: 0,
-        exp: 2,
+        exp: 3,
         solidArea: { x: 6, y: 18, width: 36, height: 26 },
-        spritePrefix: '/res/monster/greenslime_down',
+        spritePrefix: idx % 2 === 0 ? '/res/monster/greenslime_down' : '/res/monster/redslime_down',
         animFrame: 1,
         animTimer: 0,
         actionTimer: 0,
@@ -284,44 +302,20 @@ export class GameEngine {
       });
     });
 
-    const redSlimes = [[34, 11], [38, 7], [37, 9]];
-    redSlimes.forEach(([col, row], idx) => {
-      this.monsters.push({
-        id: `red_slime_${idx}`,
-        name: 'Red Slime',
-        map: 0,
-        worldX: col * TILE_SIZE,
-        worldY: row * TILE_SIZE,
-        direction: 'down',
-        speed: 2,
-        maxLife: 8,
-        life: 8,
-        attack: 4,
-        defense: 1,
-        exp: 5,
-        solidArea: { x: 6, y: 18, width: 36, height: 26 },
-        spritePrefix: '/res/monster/redslime_down',
-        animFrame: 1,
-        animTimer: 0,
-        actionTimer: 0,
-        invincibleTimer: 0,
-        knockbackTimer: 0,
-      });
-    });
-
+    // Orc Brawler inside Third Place Arena
     this.monsters.push({
-      id: 'orc_1',
-      name: 'Orc Warrior',
+      id: 'arena_orc_1',
+      name: 'Third Place Arena Orc',
       map: 0,
-      worldX: 12 * TILE_SIZE,
-      worldY: 33 * TILE_SIZE,
+      worldX: 39 * TILE_SIZE,
+      worldY: 23 * TILE_SIZE,
       direction: 'down',
       speed: 1.5,
-      maxLife: 12,
-      life: 12,
-      attack: 6,
+      maxLife: 14,
+      life: 14,
+      attack: 4,
       defense: 2,
-      exp: 10,
+      exp: 8,
       solidArea: { x: 6, y: 6, width: 36, height: 38 },
       spritePrefix: '/res/monster/orc',
       animFrame: 1,
@@ -387,8 +381,10 @@ export class GameEngine {
   startNewGame() {
     this.gameState = GameState.PLAY;
     this.currentMap = 0;
+    this.dayTime = 6500;
+    this.dayState = 'dusk';
     this.player.worldX = 23 * TILE_SIZE;
-    this.player.worldY = 21 * TILE_SIZE;
+    this.player.worldY = 25 * TILE_SIZE;
     this.player.life = this.player.maxLife;
     this.player.mana = this.player.maxMana;
     this.player.level = 1;
@@ -408,6 +404,7 @@ export class GameEngine {
     this.canTouchEvent = true;
     this.previousEventX = this.player.worldX;
     this.previousEventY = this.player.worldY;
+    this.collectedLocations = new Set();
     this.setupEntities();
     sounds.playMusic('theme');
     this.onStateChange();
@@ -429,6 +426,7 @@ export class GameEngine {
       currentWeapon: this.player.currentWeapon,
       currentShield: this.player.currentShield,
       bossDefeated: this.bossDefeated,
+      collectedLocations: Array.from(this.collectedLocations),
     };
     try {
       localStorage.setItem('blue_boy_save', JSON.stringify(saveData));
@@ -458,6 +456,7 @@ export class GameEngine {
       this.player.currentWeapon = data.currentWeapon;
       this.player.currentShield = data.currentShield;
       this.bossDefeated = data.bossDefeated;
+      this.collectedLocations = new Set(data.collectedLocations || []);
       this.gameState = GameState.PLAY;
       sounds.playMusic('theme');
       this.onStateChange();
@@ -531,6 +530,12 @@ export class GameEngine {
       return;
     }
 
+    // Movement speed: calibrated for friendly, precise, and responsive navigation
+    const isSprinting = !!(this.keys['ShiftLeft'] || this.keys['ShiftRight'] || this.isRunToggled);
+    const baseWalkSpeed = this.movementSpeedSetting === 'brisk' ? 3.2 : 2.6;
+    const currentSpeed = isSprinting ? baseWalkSpeed * 1.45 : baseWalkSpeed;
+    this.player.speed = currentSpeed;
+
     // Player Movement Inputs
     let up = !!(this.keys['KeyW'] || this.keys['ArrowUp']);
     let down = !!(this.keys['KeyS'] || this.keys['ArrowDown']);
@@ -541,30 +546,38 @@ export class GameEngine {
     if (up && down) { up = false; down = false; }
     if (left && right) { left = false; right = false; }
 
-    let dx = 0;
-    let dy = 0;
+    let dirX = 0;
+    let dirY = 0;
 
-    if (up) {
-      this.player.direction = 'up';
-      dy -= this.player.speed;
-    }
-    if (down) {
-      this.player.direction = 'down';
-      dy += this.player.speed;
-    }
-    if (left) {
-      this.player.direction = 'left';
-      dx -= this.player.speed;
-    }
-    if (right) {
-      this.player.direction = 'right';
-      dx += this.player.speed;
-    }
+    if (up) dirY -= 1;
+    if (down) dirY += 1;
+    if (left) dirX -= 1;
+    if (right) dirX += 1;
 
-    if (dx !== 0 || dy !== 0) {
+    if (dirX !== 0 || dirY !== 0) {
+      // Determine facing direction (predominant input)
+      if (Math.abs(dirY) > Math.abs(dirX)) {
+        this.player.direction = dirY > 0 ? 'down' : 'up';
+      } else if (Math.abs(dirX) > Math.abs(dirY)) {
+        this.player.direction = dirX > 0 ? 'right' : 'left';
+      } else {
+        if (up) this.player.direction = 'up';
+        else if (down) this.player.direction = 'down';
+      }
+
+      // Normalize diagonal movement speed so diagonal is not 41% faster
+      let stepSpeed = currentSpeed;
+      if (dirX !== 0 && dirY !== 0) {
+        stepSpeed *= Math.SQRT1_2;
+      }
+
+      const dx = dirX * stepSpeed;
+      const dy = dirY * stepSpeed;
+
       this.player.moving = true;
       this.player.animCounter++;
-      if (this.player.animCounter > 10) {
+      const stepDuration = isSprinting ? 8 : 11;
+      if (this.player.animCounter > stepDuration) {
         this.player.animFrame = this.player.animFrame === 1 ? 2 : 1;
         this.player.animCounter = 0;
       }
@@ -592,10 +605,123 @@ export class GameEngine {
         this.player.worldY = Math.max(0, Math.min((MAX_WORLD_ROW - 1) * TILE_SIZE, nextY));
       }
 
+      // Corner-rounding assist for smooth entry into narrow doorways, bridges, and stairs
+      if ((!canMoveX && dirX !== 0) || (!canMoveY && dirY !== 0)) {
+        this.applyCornerAssist(dirX, dirY, currentSpeed);
+      }
+
       // Collect ground items/pickups
       this.checkPickupCollection();
+
+      // Location update & discovery notification
+      this.checkLocationUpdate();
     } else {
       this.player.moving = false;
+    }
+  }
+
+  // Smooth corner assist for narrow passages, bridges, and doorways
+  applyCornerAssist(dirX: number, dirY: number, speed: number) {
+    const nudge = Math.min(speed * 0.75, 1.8);
+    // If blocked moving vertically (e.g. entering boardwalk bridge or door), check if nudging left/right is open
+    if (dirY !== 0 && dirX === 0) {
+      const checkDist = 12;
+      const nextY = this.player.worldY + dirY * speed;
+      const leftClear = !this.checkTileCollision(this.player.worldX - checkDist, nextY, this.player.solidArea) &&
+        !this.checkObjectCollision(this.player.worldX - checkDist, nextY, this.player.solidArea);
+      const rightClear = !this.checkTileCollision(this.player.worldX + checkDist, nextY, this.player.solidArea) &&
+        !this.checkObjectCollision(this.player.worldX + checkDist, nextY, this.player.solidArea);
+
+      if (leftClear && !rightClear) {
+        if (!this.checkTileCollision(this.player.worldX - nudge, this.player.worldY, this.player.solidArea)) {
+          this.player.worldX -= nudge;
+        }
+      } else if (rightClear && !leftClear) {
+        if (!this.checkTileCollision(this.player.worldX + nudge, this.player.worldY, this.player.solidArea)) {
+          this.player.worldX += nudge;
+        }
+      }
+    } else if (dirX !== 0 && dirY === 0) {
+      // If blocked moving horizontally, check if nudging up/down is open
+      const checkDist = 12;
+      const nextX = this.player.worldX + dirX * speed;
+      const upClear = !this.checkTileCollision(nextX, this.player.worldY - checkDist, this.player.solidArea) &&
+        !this.checkObjectCollision(nextX, this.player.worldY - checkDist, this.player.solidArea);
+      const downClear = !this.checkTileCollision(nextX, this.player.worldY + checkDist, this.player.solidArea) &&
+        !this.checkObjectCollision(nextX, this.player.worldY + checkDist, this.player.solidArea);
+
+      if (upClear && !downClear) {
+        if (!this.checkTileCollision(this.player.worldX, this.player.worldY - nudge, this.player.solidArea)) {
+          this.player.worldY -= nudge;
+        }
+      } else if (downClear && !upClear) {
+        if (!this.checkTileCollision(this.player.worldX, this.player.worldY + nudge, this.player.solidArea)) {
+          this.player.worldY += nudge;
+        }
+      }
+    }
+  }
+
+  getLocationInfo(): { name: string; subtitle: string; icon: string } {
+    if (this.currentMap !== 0) {
+      if (this.currentMap === 1) return { name: "FMS Union Café", subtitle: "Campus Store & Coffee Bar", icon: "☕" };
+      if (this.currentMap === 2) return { name: "FST Underground Tech Lab", subtitle: "Level B1 - Research Archives", icon: "🔬" };
+      if (this.currentMap === 3) return { name: "Ancient Server Vault", subtitle: "Level B2 - Core Chamber", icon: "⚡" };
+      return { name: "Indoor Area", subtitle: "", icon: "📍" };
+    }
+
+    const col = Math.floor((this.player.worldX + 24) / TILE_SIZE);
+    const row = Math.floor((this.player.worldY + 24) / TILE_SIZE);
+
+    if (col >= 5 && col <= 18 && row >= 1 && row <= 9) {
+      return { name: "FST Building", subtitle: "Faculty of Science & Technology", icon: "💻" };
+    }
+    if (col >= 19 && col <= 30 && row >= 1 && row <= 6) {
+      return { name: "FASS Building", subtitle: "Faculty of Arts & Social Sciences", icon: "📚" };
+    }
+    if (col >= 31 && col <= 45 && row >= 1 && row <= 9) {
+      return { name: "FBS Building", subtitle: "Faculty of Business Studies", icon: "📊" };
+    }
+    if (col >= 18 && col <= 30 && row >= 7 && row <= 14) {
+      return { name: "Central Garden Yard", subtitle: "Botanical Plaza & Courtyard", icon: "🌸" };
+    }
+    if (col >= 34 && col <= 45 && row >= 18 && row <= 30) {
+      return { name: "Third Place Arena", subtitle: "Student Pavilion & Battle Arena", icon: "⚔️" };
+    }
+    if (col >= 5 && col <= 16 && row >= 36 && row <= 44) {
+      return { name: "FMS Building", subtitle: "Faculty of Management Studies", icon: "🏢" };
+    }
+    if (col >= 20 && col <= 32 && row >= 14 && row <= 36) {
+      return { name: "Floating Boardwalk", subtitle: "Campus Lake Promenade", icon: "🌉" };
+    }
+    if (row >= 36) {
+      return { name: "South Campus Park", subtitle: "Lotus Fountain & Terraces", icon: "🌿" };
+    }
+    return { name: "Campus Lake Promenade", subtitle: "Scenic Lakeside Walkway", icon: "📍" };
+  }
+
+  checkLocationUpdate() {
+    const loc = this.getLocationInfo();
+    if (loc.name !== this.lastLocationName) {
+      this.lastLocationName = loc.name;
+      this.addDamageNumber(this.player.worldX + 24, this.player.worldY - 24, `${loc.icon} ${loc.name}`, '#38bdf8');
+
+      // Check campus building discovery and collection
+      const targetBuilding = this.campusBuildings.find((b) => b.name === loc.name);
+      if (targetBuilding && !this.collectedLocations.has(targetBuilding.name)) {
+        this.collectedLocations.add(targetBuilding.name);
+        sounds.playSE('powerup');
+        const count = this.collectedLocations.size;
+        this.addDamageNumber(this.player.worldX + 24, this.player.worldY - 44, `📍 Discovered: ${targetBuilding.name} (${count}/4 Buildings)`, '#22c55e');
+        if (count === 4) {
+          this.player.exp += 40;
+          this.player.coin += 30;
+          sounds.playSE('fanfare');
+          this.addDamageNumber(this.player.worldX + 24, this.player.worldY - 60, '🏆 Campus Tour Complete! +40 EXP +30 Coins', '#fbbf24');
+        }
+      }
+
+      this.onStateChange();
     }
   }
 
@@ -1172,21 +1298,21 @@ export class GameEngine {
 
     if (!this.canTouchEvent) return;
 
-    // Map 0 -> Map 1 (Merchant house doorway at 10, 39)
+    // Map 0 -> Map 1 (Merchant house / FMS Union Café doorway at 10, 39)
     if (this.currentMap === 0 && col === 10 && row === 39) {
       this.teleport(1, 12, 12, 'merchant', 'up');
     }
-    // Map 1 -> Map 0 (Merchant shop exit at 12, 13)
+    // Map 1 -> Map 0 (FMS Union Café exit at 12, 13)
     else if (this.currentMap === 1 && col === 12 && row === 13) {
       this.teleport(0, 10, 40, 'theme', 'down');
     }
-    // Map 0 -> Map 2 (Dungeon B1 entrance stairs at 12, 9)
-    else if (this.currentMap === 0 && col === 12 && row === 9) {
+    // Map 0 -> Map 2 (FST Building Tech Lab entrance at 11, 8 or 12, 9)
+    else if (this.currentMap === 0 && ((col === 11 && row === 8) || (col === 12 && row === 9))) {
       this.teleport(2, 9, 40, 'theme', 'up');
     }
-    // Map 2 -> Map 0 (Dungeon B1 exit stairs at 9, 41)
+    // Map 2 -> Map 0 (Exiting Tech Lab back to FST building plaza)
     else if (this.currentMap === 2 && col === 9 && row === 41) {
-      this.teleport(0, 12, 10, 'theme', 'down');
+      this.teleport(0, 11, 9, 'theme', 'down');
     }
     // Map 2 -> Map 3 (Dungeon B2 stairs at 8, 7)
     else if (this.currentMap === 2 && col === 8 && row === 7) {
@@ -1196,8 +1322,8 @@ export class GameEngine {
     else if (this.currentMap === 3 && col === 26 && row === 41) {
       this.teleport(2, 8, 8, 'theme', 'down');
     }
-    // Healing Pool on Map 0 at (23, 12)
-    else if (this.currentMap === 0 && col === 23 && row === 12 && (this.player.life < this.player.maxLife || this.player.mana < this.player.maxMana)) {
+    // Healing Pool / Lotus Fountain at (23, 12) or South Fountain at (23, 44)
+    else if (this.currentMap === 0 && ((col === 23 && row === 12) || (col === 23 && row === 44)) && (this.player.life < this.player.maxLife || this.player.mana < this.player.maxMana)) {
       this.canTouchEvent = false;
       this.previousEventX = this.player.worldX;
       this.previousEventY = this.player.worldY;
@@ -1309,7 +1435,8 @@ export class GameEngine {
             this.player.inventory.push(createItem('key', 1));
           }
           sounds.playSE('coin');
-          this.addDamageNumber(obj.worldX + 24, obj.worldY - 10, 'Obtained Key!', '#fbbf24');
+          const locText = obj.id === 'key_1' ? 'Key near FASS Building!' : obj.id === 'key_2' ? 'Key near FMS Building!' : 'Obtained Key!';
+          this.addDamageNumber(obj.worldX + 24, obj.worldY - 10, locText, '#fbbf24');
           this.objects.splice(i, 1);
           this.onStateChange();
         } else if (obj.type === 'axe' || obj.type === 'lantern' || obj.type === 'tent') {
@@ -1317,7 +1444,15 @@ export class GameEngine {
           if (obj.type === 'lantern') this.player.hasLantern = true;
           sounds.playSE('powerup');
           this.dialogueSpeaker = 'Item Discovered';
-          this.dialogueText = `You obtained the [${obj.name}]!\nCheck your inventory (C key) to inspect or equip it.`;
+          if (obj.id === 'axe_1') {
+            this.dialogueText = `You obtained the [Hammer] in the Central Garden Yard!\nCheck your inventory (C key) to equip it and crush obstacles and monsters.`;
+          } else if (obj.id === 'lantern_1') {
+            this.dialogueText = `You obtained the [Lantern] near FBS Building Plaza!\nIt illuminates dark underground tech labs and dungeons.`;
+          } else if (obj.id === 'tent_1') {
+            this.dialogueText = `You obtained the [Tent] near FST Building!\nUse it to rest and fully replenish your Health and Mana.`;
+          } else {
+            this.dialogueText = `You obtained the [${obj.name}]!\nCheck your inventory (C key) to inspect or equip it.`;
+          }
           this.gameState = GameState.DIALOGUE;
           this.objects.splice(i, 1);
           this.onStateChange();

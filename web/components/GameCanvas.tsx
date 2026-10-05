@@ -74,9 +74,21 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
 
   useEffect(() => {
     let animId: number;
+    let lastTime = performance.now();
+    let accumulator = 0;
+    const FIXED_STEP = 1000 / 60; // Strict 60 Hz physics tick (16.667ms)
 
-    const loop = () => {
-      game.update();
+    const loop = (currentTime: number) => {
+      // Clamp elapsed time to 100ms to avoid spiral of death on background tab switch
+      const elapsed = Math.min(100, currentTime - lastTime);
+      lastTime = currentTime;
+      accumulator += elapsed;
+
+      // Run game updates in fixed 60 FPS increments
+      while (accumulator >= FIXED_STEP) {
+        game.update();
+        accumulator -= FIXED_STEP;
+      }
 
       const canvas = canvasRef.current;
       if (canvas) {
