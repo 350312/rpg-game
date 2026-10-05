@@ -32,7 +32,7 @@ public class Main {
         // - Disable OS window resizing to maintain exact aspect ratio and tile grid
         window.setResizable(false);
         // - Set window title bar text
-        window.setTitle("Blue Boy Adventure");
+        window.setTitle("Monpura Tales");
 
         // STEP 3: Mount the core Game Engine Panel (handles rendering & game loop)
         GamePanel gamePanel = new GamePanel();

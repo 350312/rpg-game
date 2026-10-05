@@ -38,8 +38,8 @@ export const TitleScreen: React.FC<TitleScreenProps> = ({ game, onStartNew, onLo
       <div className="flex flex-col items-center gap-3 z-10 mb-8 animate-fade-in text-center">
         <div className="flex items-center gap-3">
           <img src="/res/objects/blueheart.png" alt="Relic" className="w-10 h-10 object-contain pixelated animate-bounce" />
-          <h1 className="text-3xl md:text-5xl font-black tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-sky-400 via-blue-200 to-amber-300 drop-shadow-[0_4px_12px_rgba(56,189,248,0.5)]">
-            BLUE BOY ADVENTURE
+          <h1 className="text-3xl md:text-5xl font-black tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 via-amber-200 to-sky-300 drop-shadow-[0_4px_12px_rgba(52,211,153,0.5)]">
+            MONPURA TALES
           </h1>
           <img src="/res/objects/blueheart.png" alt="Relic" className="w-10 h-10 object-contain pixelated animate-bounce" />
         </div>
