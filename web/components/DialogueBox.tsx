@@ -2,6 +2,7 @@ import React from 'react';
 import { GameEngine } from '../game/engine';
 import { GameState } from '../game/types';
 import { sounds } from '../game/sound';
+import { X } from 'lucide-react';
 
 interface DialogueBoxProps {
   game: GameEngine;
@@ -27,8 +28,21 @@ export const DialogueBox: React.FC<DialogueBoxProps> = ({ game, onClose }) => {
         </div>
       )}
 
+      {/* Top-Right Close Button */}
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          advanceDialogue();
+        }}
+        className="absolute top-2 right-2 p-1.5 text-zinc-400 hover:text-white active:bg-red-600 active:text-white rounded-lg transition cursor-pointer"
+        title="Close Dialogue"
+        aria-label="Close Dialogue"
+      >
+        <X className="w-4 h-4" />
+      </button>
+
       {/* Message Text */}
-      <div className="text-white text-xs sm:text-base md:text-lg leading-relaxed whitespace-pre-line font-mono min-h-[2.5rem] mt-0.5 sm:mt-1">
+      <div className="text-white text-xs sm:text-base md:text-lg leading-relaxed whitespace-pre-line font-mono min-h-[2.5rem] mt-0.5 sm:mt-1 pr-6">
         {game.dialogueText}
       </div>
 
