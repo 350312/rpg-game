@@ -18,24 +18,24 @@ export const DialogueBox: React.FC<DialogueBoxProps> = ({ game, onClose }) => {
   return (
     <div
       onClick={advanceDialogue}
-      className="absolute bottom-6 left-1/2 -translate-x-1/2 w-[92%] max-w-2xl bg-black/90 border-2 border-white/80 rounded-xl p-5 shadow-2xl backdrop-blur-md cursor-pointer select-none z-30 transition transform hover:scale-[1.01]"
+      className="absolute bottom-2 sm:bottom-5 left-1/2 -translate-x-1/2 w-[94%] max-w-2xl bg-black/92 border-2 border-white/80 rounded-xl p-3 sm:p-5 shadow-2xl backdrop-blur-md cursor-pointer select-none z-30 transition transform hover:scale-[1.01] active:scale-[0.99]"
     >
       {/* Speaker Name Tag */}
       {game.dialogueSpeaker && (
-        <div className="absolute -top-3.5 left-6 bg-amber-500 text-black font-bold text-xs px-3 py-0.5 rounded shadow border border-amber-300 tracking-wider uppercase font-mono">
+        <div className="absolute -top-3 left-4 sm:left-6 bg-amber-500 text-black font-bold text-[10px] sm:text-xs px-2.5 sm:px-3 py-0.5 rounded shadow border border-amber-300 tracking-wider uppercase font-mono">
           {game.dialogueSpeaker}
         </div>
       )}
 
       {/* Message Text */}
-      <div className="text-white text-base md:text-lg leading-relaxed whitespace-pre-line font-mono min-h-[3rem] mt-1">
+      <div className="text-white text-xs sm:text-base md:text-lg leading-relaxed whitespace-pre-line font-mono min-h-[2.5rem] mt-0.5 sm:mt-1">
         {game.dialogueText}
       </div>
 
       {/* Advance Indicator */}
-      <div className="flex justify-end items-center gap-1.5 text-xs text-amber-400 font-mono mt-3 animate-pulse">
-        <span>Click or Press [ENTER]</span>
-        <span className="text-base">▼</span>
+      <div className="flex justify-end items-center gap-1.5 text-[10px] sm:text-xs text-amber-400 font-mono mt-1.5 sm:mt-3 animate-pulse">
+        <span>Tap to Continue</span>
+        <span className="text-sm">▼</span>
       </div>
     </div>
   );

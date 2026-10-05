@@ -117,19 +117,21 @@ export const App: React.FC = () => {
           />
 
           {/* Virtual On-Screen Controls */}
-          <VirtualControls
-            game={game}
-            onOpenInventory={() => {
-              game.gameState = GameState.CHARACTER;
-              sounds.playSE('cursor');
-              forceUpdate();
-            }}
-            onToggleMiniMap={() => {
-              game.miniMapOn = !game.miniMapOn;
-              sounds.playSE('cursor');
-              forceUpdate();
-            }}
-          />
+          {(game.gameState === GameState.PLAY || game.gameState === GameState.DIALOGUE) && (
+            <VirtualControls
+              game={game}
+              onOpenInventory={() => {
+                game.gameState = GameState.CHARACTER;
+                sounds.playSE('cursor');
+                forceUpdate();
+              }}
+              onToggleMiniMap={() => {
+                game.miniMapOn = !game.miniMapOn;
+                sounds.playSE('cursor');
+                forceUpdate();
+              }}
+            />
+          )}
 
           {/* Dialogue Box */}
           {game.gameState === GameState.DIALOGUE && (
