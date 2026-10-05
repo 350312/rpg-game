@@ -52,7 +52,14 @@ export const HUD: React.FC<HUDProps> = ({ game, onOpenInventory, onOpenOptions, 
   }
 
   return (
-    <div className="absolute top-0 left-0 right-0 p-2 sm:p-3 flex justify-between items-start pointer-events-none z-10 text-white font-mono select-none">
+    <div
+      className="absolute top-0 left-0 right-0 flex justify-between items-start pointer-events-none z-10 text-white font-mono select-none"
+      style={{
+        paddingTop: 'max(0.5rem, env(safe-area-inset-top))',
+        paddingLeft: 'max(0.75rem, env(safe-area-inset-left))',
+        paddingRight: 'max(0.75rem, env(safe-area-inset-right))',
+      }}
+    >
       {/* Left: Compact, Sleek Status HUD */}
       <div className="flex flex-col gap-1 bg-black/75 p-1.5 sm:p-2 rounded-xl border border-white/20 backdrop-blur-md pointer-events-auto shadow-lg max-w-[240px] sm:max-w-xs transition-all">
         {/* Row 1: Hearts & HP Number */}

@@ -97,13 +97,33 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
     };
   }, [game]);
 
+  const handleCanvasPointer = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    if (game.gameState !== GameState.PLAY) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const clickX = ((e.clientX - rect.left) / rect.width) * SCREEN_WIDTH;
+    const clickY = ((e.clientY - rect.top) / rect.height) * SCREEN_HEIGHT;
+    const pCenterX = game.player.screenX + 24;
+    const pCenterY = game.player.screenY + 24;
+    const diffX = clickX - pCenterX;
+    const diffY = clickY - pCenterY;
+
+    if (Math.hypot(diffX, diffY) > 20) {
+      if (Math.abs(diffX) > Math.abs(diffY)) {
+        game.player.direction = diffX > 0 ? 'right' : 'left';
+      } else {
+        game.player.direction = diffY > 0 ? 'down' : 'up';
+      }
+    }
+  };
+
   return (
     <div className="relative w-full h-full flex items-center justify-center bg-black overflow-hidden select-none">
       <canvas
         ref={canvasRef}
+        onPointerDown={handleCanvasPointer}
         width={SCREEN_WIDTH}
         height={SCREEN_HEIGHT}
-        className="w-full h-full max-w-[1600px] max-h-[960px] object-contain shadow-2xl"
+        className="w-full h-full max-w-[1600px] max-h-[960px] object-contain shadow-2xl cursor-pointer"
         style={{
           imageRendering: 'pixelated',
         }}

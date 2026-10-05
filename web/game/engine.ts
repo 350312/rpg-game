@@ -531,20 +531,32 @@ export class GameEngine {
       return;
     }
 
-    // Player Movement
+    // Player Movement Inputs
+    let up = !!(this.keys['KeyW'] || this.keys['ArrowUp']);
+    let down = !!(this.keys['KeyS'] || this.keys['ArrowDown']);
+    let left = !!(this.keys['KeyA'] || this.keys['ArrowLeft']);
+    let right = !!(this.keys['KeyD'] || this.keys['ArrowRight']);
+
+    // Cancel out direct opposing inputs
+    if (up && down) { up = false; down = false; }
+    if (left && right) { left = false; right = false; }
+
     let dx = 0;
     let dy = 0;
 
-    if (this.keys['KeyW'] || this.keys['ArrowUp']) {
+    if (up) {
       this.player.direction = 'up';
       dy -= this.player.speed;
-    } else if (this.keys['KeyS'] || this.keys['ArrowDown']) {
+    }
+    if (down) {
       this.player.direction = 'down';
       dy += this.player.speed;
-    } else if (this.keys['KeyA'] || this.keys['ArrowLeft']) {
+    }
+    if (left) {
       this.player.direction = 'left';
       dx -= this.player.speed;
-    } else if (this.keys['KeyD'] || this.keys['ArrowRight']) {
+    }
+    if (right) {
       this.player.direction = 'right';
       dx += this.player.speed;
     }
@@ -557,15 +569,26 @@ export class GameEngine {
         this.player.animCounter = 0;
       }
 
-      // Check collision with solid tiles
+      // Check collision on X and Y independently to allow smooth sliding and turning
       const nextX = this.player.worldX + dx;
       const nextY = this.player.worldY + dy;
 
-      if (!this.checkTileCollision(nextX, nextY, this.player.solidArea) &&
-          !this.checkObjectCollision(nextX, nextY, this.player.solidArea) &&
-          !this.checkInteractiveTileCollision(nextX, nextY, this.player.solidArea) &&
-          !this.checkNPCCollision(nextX, nextY, this.player.solidArea, dx, dy)) {
+      const canMoveX = dx !== 0 &&
+        !this.checkTileCollision(nextX, this.player.worldY, this.player.solidArea) &&
+        !this.checkObjectCollision(nextX, this.player.worldY, this.player.solidArea) &&
+        !this.checkInteractiveTileCollision(nextX, this.player.worldY, this.player.solidArea) &&
+        !this.checkNPCCollision(nextX, this.player.worldY, this.player.solidArea, dx, 0);
+
+      const canMoveY = dy !== 0 &&
+        !this.checkTileCollision(this.player.worldX, nextY, this.player.solidArea) &&
+        !this.checkObjectCollision(this.player.worldX, nextY, this.player.solidArea) &&
+        !this.checkInteractiveTileCollision(this.player.worldX, nextY, this.player.solidArea) &&
+        !this.checkNPCCollision(this.player.worldX, nextY, this.player.solidArea, 0, dy);
+
+      if (canMoveX) {
         this.player.worldX = Math.max(0, Math.min((MAX_WORLD_COL - 1) * TILE_SIZE, nextX));
+      }
+      if (canMoveY) {
         this.player.worldY = Math.max(0, Math.min((MAX_WORLD_ROW - 1) * TILE_SIZE, nextY));
       }
 
@@ -1198,6 +1221,8 @@ export class GameEngine {
   }
 
   teleport(targetMap: number, col: number, row: number, music?: 'theme' | 'merchant', dir?: Direction) {
+    this.keys = {}; // Clear all held keys
+    this.player.moving = false;
     this.canTouchEvent = false;
     this.gameState = GameState.TRANSITION;
     this.transitionStateCounter = 0;
@@ -1218,6 +1243,7 @@ export class GameEngine {
     } 
     // Midpoint (Frame 15): screen is completely black, change world & coordinates cleanly
     else if (this.transitionStateCounter === 15) {
+      this.keys = {}; // Clear keys at midpoint
       this.transitionAlpha = 1;
       this.currentMap = this.targetTransitionMap;
       this.player.worldX = this.targetTransitionCol * TILE_SIZE;
@@ -1240,6 +1266,8 @@ export class GameEngine {
     } 
     // Complete transition
     else {
+      this.keys = {}; // Clear keys on completion
+      this.player.moving = false;
       this.transitionAlpha = 0;
       this.transitionStateCounter = 0;
       this.gameState = GameState.PLAY;

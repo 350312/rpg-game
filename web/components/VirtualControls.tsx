@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { GameEngine } from '../game/engine';
 import { ArrowUp, ArrowDown, ArrowLeft, ArrowRight, Shield, Flame, Sword, MessageSquare } from 'lucide-react';
 
@@ -12,6 +12,10 @@ export const VirtualControls: React.FC<VirtualControlsProps> = ({ game }) => {
   const isInteractable = game.hasNearbyInteractable();
 
   const handleKeyStart = (code: string) => {
+    if (code === 'KeyW') { game.keys['KeyS'] = false; game.keys['ArrowDown'] = false; }
+    if (code === 'KeyS') { game.keys['KeyW'] = false; game.keys['ArrowUp'] = false; }
+    if (code === 'KeyA') { game.keys['KeyD'] = false; game.keys['ArrowRight'] = false; }
+    if (code === 'KeyD') { game.keys['KeyA'] = false; game.keys['ArrowLeft'] = false; }
     game.keys[code] = true;
   };
 
@@ -19,14 +23,59 @@ export const VirtualControls: React.FC<VirtualControlsProps> = ({ game }) => {
     game.keys[code] = false;
   };
 
+  useEffect(() => {
+    const handleGlobalRelease = () => {
+      game.keys['KeyW'] = false;
+      game.keys['KeyS'] = false;
+      game.keys['KeyA'] = false;
+      game.keys['KeyD'] = false;
+      game.keys['ArrowUp'] = false;
+      game.keys['ArrowDown'] = false;
+      game.keys['ArrowLeft'] = false;
+      game.keys['ArrowRight'] = false;
+      game.keys['Space'] = false;
+    };
+
+    window.addEventListener('pointerup', handleGlobalRelease);
+    window.addEventListener('pointercancel', handleGlobalRelease);
+    window.addEventListener('touchend', handleGlobalRelease);
+    window.addEventListener('touchcancel', handleGlobalRelease);
+    window.addEventListener('blur', handleGlobalRelease);
+
+    return () => {
+      window.removeEventListener('pointerup', handleGlobalRelease);
+      window.removeEventListener('pointercancel', handleGlobalRelease);
+      window.removeEventListener('touchend', handleGlobalRelease);
+      window.removeEventListener('touchcancel', handleGlobalRelease);
+      window.removeEventListener('blur', handleGlobalRelease);
+    };
+  }, [game]);
+
   return (
-    <div className="absolute inset-x-0 bottom-2 sm:bottom-4 px-2 sm:px-4 flex justify-between items-end pointer-events-none z-20 select-none touch-none">
+    <div
+      className="absolute inset-x-0 bottom-2 sm:bottom-4 flex justify-between items-end pointer-events-none z-20 select-none touch-none"
+      style={{
+        paddingLeft: 'max(0.75rem, env(safe-area-inset-left))',
+        paddingRight: 'max(0.75rem, env(safe-area-inset-right))',
+        paddingBottom: 'max(0.5rem, env(safe-area-inset-bottom))',
+      }}
+    >
       {/* Left: Classic Ergonomic D-Pad */}
       <div className="relative w-28 h-28 sm:w-32 sm:h-32 bg-black/50 rounded-full border border-white/25 p-1.5 backdrop-blur-md pointer-events-auto flex items-center justify-center shadow-2xl">
         {/* Up */}
         <button
-          onPointerDown={() => handleKeyStart('KeyW')}
-          onPointerUp={() => handleKeyEnd('KeyW')}
+          onPointerDown={(e) => {
+            try { e.currentTarget.setPointerCapture(e.pointerId); } catch (_) {}
+            handleKeyStart('KeyW');
+          }}
+          onPointerUp={(e) => {
+            try { e.currentTarget.releasePointerCapture(e.pointerId); } catch (_) {}
+            handleKeyEnd('KeyW');
+          }}
+          onPointerCancel={(e) => {
+            try { e.currentTarget.releasePointerCapture(e.pointerId); } catch (_) {}
+            handleKeyEnd('KeyW');
+          }}
           onPointerLeave={() => handleKeyEnd('KeyW')}
           className="absolute top-1 w-9 h-9 sm:w-10 sm:h-10 bg-zinc-800/90 active:bg-amber-600 rounded-lg border border-white/30 flex items-center justify-center text-white active:scale-90 transition-transform shadow"
           aria-label="Move Up"
@@ -36,8 +85,18 @@ export const VirtualControls: React.FC<VirtualControlsProps> = ({ game }) => {
 
         {/* Down */}
         <button
-          onPointerDown={() => handleKeyStart('KeyS')}
-          onPointerUp={() => handleKeyEnd('KeyS')}
+          onPointerDown={(e) => {
+            try { e.currentTarget.setPointerCapture(e.pointerId); } catch (_) {}
+            handleKeyStart('KeyS');
+          }}
+          onPointerUp={(e) => {
+            try { e.currentTarget.releasePointerCapture(e.pointerId); } catch (_) {}
+            handleKeyEnd('KeyS');
+          }}
+          onPointerCancel={(e) => {
+            try { e.currentTarget.releasePointerCapture(e.pointerId); } catch (_) {}
+            handleKeyEnd('KeyS');
+          }}
           onPointerLeave={() => handleKeyEnd('KeyS')}
           className="absolute bottom-1 w-9 h-9 sm:w-10 sm:h-10 bg-zinc-800/90 active:bg-amber-600 rounded-lg border border-white/30 flex items-center justify-center text-white active:scale-90 transition-transform shadow"
           aria-label="Move Down"
@@ -47,8 +106,18 @@ export const VirtualControls: React.FC<VirtualControlsProps> = ({ game }) => {
 
         {/* Left */}
         <button
-          onPointerDown={() => handleKeyStart('KeyA')}
-          onPointerUp={() => handleKeyEnd('KeyA')}
+          onPointerDown={(e) => {
+            try { e.currentTarget.setPointerCapture(e.pointerId); } catch (_) {}
+            handleKeyStart('KeyA');
+          }}
+          onPointerUp={(e) => {
+            try { e.currentTarget.releasePointerCapture(e.pointerId); } catch (_) {}
+            handleKeyEnd('KeyA');
+          }}
+          onPointerCancel={(e) => {
+            try { e.currentTarget.releasePointerCapture(e.pointerId); } catch (_) {}
+            handleKeyEnd('KeyA');
+          }}
           onPointerLeave={() => handleKeyEnd('KeyA')}
           className="absolute left-1 w-9 h-9 sm:w-10 sm:h-10 bg-zinc-800/90 active:bg-amber-600 rounded-lg border border-white/30 flex items-center justify-center text-white active:scale-90 transition-transform shadow"
           aria-label="Move Left"
@@ -58,8 +127,18 @@ export const VirtualControls: React.FC<VirtualControlsProps> = ({ game }) => {
 
         {/* Right */}
         <button
-          onPointerDown={() => handleKeyStart('KeyD')}
-          onPointerUp={() => handleKeyEnd('KeyD')}
+          onPointerDown={(e) => {
+            try { e.currentTarget.setPointerCapture(e.pointerId); } catch (_) {}
+            handleKeyStart('KeyD');
+          }}
+          onPointerUp={(e) => {
+            try { e.currentTarget.releasePointerCapture(e.pointerId); } catch (_) {}
+            handleKeyEnd('KeyD');
+          }}
+          onPointerCancel={(e) => {
+            try { e.currentTarget.releasePointerCapture(e.pointerId); } catch (_) {}
+            handleKeyEnd('KeyD');
+          }}
           onPointerLeave={() => handleKeyEnd('KeyD')}
           className="absolute right-1 w-9 h-9 sm:w-10 sm:h-10 bg-zinc-800/90 active:bg-amber-600 rounded-lg border border-white/30 flex items-center justify-center text-white active:scale-90 transition-transform shadow"
           aria-label="Move Right"
@@ -91,10 +170,17 @@ export const VirtualControls: React.FC<VirtualControlsProps> = ({ game }) => {
         <button
           onPointerDown={(e) => {
             e.preventDefault();
+            try { e.currentTarget.setPointerCapture(e.pointerId); } catch (_) {}
             handleKeyStart('Space');
           }}
           onPointerUp={(e) => {
             e.preventDefault();
+            try { e.currentTarget.releasePointerCapture(e.pointerId); } catch (_) {}
+            handleKeyEnd('Space');
+          }}
+          onPointerCancel={(e) => {
+            e.preventDefault();
+            try { e.currentTarget.releasePointerCapture(e.pointerId); } catch (_) {}
             handleKeyEnd('Space');
           }}
           onPointerLeave={() => handleKeyEnd('Space')}
