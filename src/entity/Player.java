@@ -43,17 +43,17 @@ public class Player extends Entity {
         direction = "down";
 
         // PLAYER STATUS
-        level = 1;
-        maxLife = 6;
+        level = 100;
+        maxLife = 20;
         life = maxLife;
-        maxMana = 4;
+        maxMana = 30;
         mana = maxMana;
-        ammo = 10;
-        strength = 1;
-        dexterity = 1;
-        exp = 0;
+        ammo = 100;
+        strength = 100;
+        dexterity = 100;
+        exp = 200;
         nextLevelExp = 5;
-        coin = 500;
+        coin = 5000;
         currentWeapon = new OBJ_Sword_Normal(gp);
         currentShield = new OBJ_Shield_Wood(gp);
         currentLight = null;
