@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { GameEngine } from '../game/engine';
+import { HERO_SPRITES } from '../game/assets';
 import { Item } from '../game/types';
 import { sounds } from '../game/sound';
 import { Shield, Sword, X, Sparkles, Check } from 'lucide-react';
@@ -122,9 +123,24 @@ export const CharacterModal: React.FC<CharacterModalProps> = ({ game, onClose, o
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Left Column: Player Stats */}
             <div className="bg-black/40 border border-white/10 rounded-lg p-3.5 flex flex-col gap-2 text-xs">
-              <h3 className="font-bold text-sm text-zinc-300 border-b border-white/10 pb-1.5 flex items-center gap-1.5">
-                <Sparkles className="w-4 h-4 text-amber-400" /> Attributes
-              </h3>
+              <div className="flex items-center gap-3 border-b border-white/10 pb-2 mb-0.5">
+                <div className="p-1.5 bg-zinc-900 border border-white/20 rounded-lg shrink-0">
+                  <img
+                    src={HERO_SPRITES.down[1]}
+                    alt="Main Character"
+                    className="w-10 h-10 object-contain pixelated"
+                  />
+                </div>
+                <div className="flex flex-col">
+                  <h3 className="font-bold text-sm text-zinc-200 flex items-center gap-1.5">
+                    <Sparkles className="w-4 h-4 text-amber-400" />
+                    <span>Attributes</span>
+                  </h3>
+                  <span className="text-[11px] text-zinc-400">
+                    Buildings Visited: {game.collectedLocations.size} / 4
+                  </span>
+                </div>
+              </div>
               <div className="flex justify-between">
                 <span className="text-zinc-400">Level:</span>
                 <span className="text-amber-300 font-bold">{player.level}</span>

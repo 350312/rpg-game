@@ -11,6 +11,7 @@ export enum GameState {
   SLEEP = 9,
   MAP = 10,
   VICTORY = 11,
+  BOOK_CUTSCENE = 12,
 }
 
 export type Direction = 'up' | 'down' | 'left' | 'right';
@@ -50,7 +51,25 @@ export interface GameObject {
   loot?: Item;
   interactive?: boolean;
   destroyed?: boolean;
-  type?: 'door' | 'iron_door' | 'chest' | 'key' | 'potion' | 'lantern' | 'tent' | 'axe' | 'pickaxe' | 'coin' | 'blue_heart';
+  transparentBg?: boolean;
+  dialogue?: string;
+  type?:
+    | 'door'
+    | 'iron_door'
+    | 'chest'
+    | 'key'
+    | 'potion'
+    | 'lantern'
+    | 'tent'
+    | 'axe'
+    | 'pickaxe'
+    | 'coin'
+    | 'blue_heart'
+    | 'monpura_book'
+    | 'lore_book'
+    | 'portal'
+    | 'seal'
+    | 'prop';
 }
 
 export interface InteractiveTile {
@@ -75,11 +94,18 @@ export interface NPC {
   worldY: number;
   direction: Direction;
   sprite: string;
+  spriteSet?: 'oldman' | 'senior' | 'friend' | 'merchant' | 'rock';
   solidArea: Rect;
   dialogues: string[];
   dialogueIndex: number;
   isShop?: boolean;
   isPushable?: boolean;
+  patrolRoute?: { col: number; row: number }[];
+  patrolIndex?: number;
+  patrolSpeed?: number;
+  animFrame?: number;
+  animCounter?: number;
+  moving?: boolean;
 }
 
 export interface Monster {
@@ -145,4 +171,15 @@ export interface DamageNumber {
   text: string;
   color: string;
   life: number;
+}
+
+export interface QuestProgress {
+  stage: number; // 0..6
+  sealsCollected: string[];
+  libraryBooksRead: string[];
+  monstersDefeated: number;
+  bookOpened: boolean;
+  talkedToGuide: boolean;
+  talkedToLibrarian: boolean;
+  talkedToElder: boolean;
 }

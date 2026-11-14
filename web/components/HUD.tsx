@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { GameEngine } from '../game/engine';
-import { MAP_CONFIGS } from '../game/maps';
-import { Backpack, Compass, Settings, Shield, Sword, Maximize, Minimize, Building2, CheckCircle2, MapPin, X } from 'lucide-react';
+import { getQuestDescriptor } from '../game/story';
+import { Backpack, Compass, Settings, Shield, Sword, Maximize, Minimize, Building2, CheckCircle2, MapPin, X, ScrollText, BookOpen, Sparkles } from 'lucide-react';
 
 interface HUDProps {
   game: GameEngine;
@@ -12,9 +12,10 @@ interface HUDProps {
 
 export const HUD: React.FC<HUDProps> = ({ game, onOpenInventory, onOpenOptions, onToggleMiniMap }) => {
   const player = game.player;
-  const currentAreaName = MAP_CONFIGS.find((m) => m.id === game.currentMap)?.name || 'Unknown';
+  const quest = getQuestDescriptor(game.questProgress);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showLandmarksModal, setShowLandmarksModal] = useState(false);
+  const [showQuestModal, setShowQuestModal] = useState(false);
 
   useEffect(() => {
     const handleFullscreenChange = () => {
@@ -116,6 +117,101 @@ export const HUD: React.FC<HUDProps> = ({ game, onOpenInventory, onOpenOptions, 
           })()}
         </div>
       </div>
+
+      {/* Center: Sleek Quest Objective Tracker */}
+      <button
+        onClick={() => setShowQuestModal(true)}
+        className="pointer-events-auto hidden md:flex flex-col items-center bg-black/75 hover:bg-black/90 px-3.5 py-1.5 rounded-xl border border-emerald-400/35 hover:border-emerald-400/70 backdrop-blur-md shadow-lg max-w-sm lg:max-w-md transition cursor-pointer active:scale-95 text-center"
+        title="Click to open Quest Journal & Hints"
+      >
+        <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-wider text-emerald-300 font-bold">
+          <ScrollText className="w-3 h-3" />
+          <span>{quest.chapter}</span>
+        </div>
+        <div className="text-xs text-zinc-100 font-sans font-medium truncate max-w-full mt-0.5">
+          {quest.objective}
+        </div>
+      </button>
+
+      {/* Quest Journal Modal */}
+      {showQuestModal && (
+        <div
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setShowQuestModal(false);
+          }}
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/65 backdrop-blur-sm pointer-events-auto"
+        >
+          <div className="bg-zinc-950/95 border border-emerald-400/40 rounded-2xl p-4 sm:p-6 w-full max-w-md shadow-2xl text-white font-sans">
+            <div className="flex items-center justify-between pb-3 border-b border-white/10 mb-4">
+              <div className="flex items-center gap-2">
+                <ScrollText className="w-5 h-5 text-emerald-400" />
+                <div>
+                  <div className="text-[10px] uppercase tracking-widest text-emerald-300 font-mono">
+                    {quest.chapter}
+                  </div>
+                  <h3 className="font-bold text-base text-white font-mono">
+                    {quest.title}
+                  </h3>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowQuestModal(false)}
+                className="p-1 rounded-lg hover:bg-white/10 text-zinc-400 hover:text-white transition cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-3 mb-4">
+              <div className="p-3 rounded-xl bg-emerald-950/40 border border-emerald-500/35">
+                <div className="text-[10px] uppercase tracking-wider text-emerald-300 font-mono mb-1">
+                  Current Objective
+                </div>
+                <div className="text-sm text-white font-medium leading-snug">
+                  {quest.objective}
+                </div>
+              </div>
+
+              <div className="p-3 rounded-xl bg-zinc-900/70 border border-white/10">
+                <div className="text-[10px] uppercase tracking-wider text-amber-300 font-mono mb-1">
+                  Explorer Hint
+                </div>
+                <div className="text-xs text-zinc-300 leading-relaxed">
+                  {quest.hint}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-2 text-center font-mono">
+                <div className="p-2 rounded-xl bg-zinc-900/70 border border-white/10">
+                  <div className="text-[10px] text-zinc-400">Buildings</div>
+                  <div className="text-sm font-bold text-sky-300">{game.collectedLocations.size}/4</div>
+                </div>
+                <div className="p-2 rounded-xl bg-zinc-900/70 border border-white/10">
+                  <div className="text-[10px] text-zinc-400 flex items-center justify-center gap-1">
+                    <BookOpen className="w-3 h-3" /> Lore
+                  </div>
+                  <div className="text-sm font-bold text-purple-300">{game.questProgress.libraryBooksRead.length}/3</div>
+                </div>
+                <div className="p-2 rounded-xl bg-zinc-900/70 border border-white/10">
+                  <div className="text-[10px] text-zinc-400 flex items-center justify-center gap-1">
+                    <Sparkles className="w-3 h-3" /> Seals
+                  </div>
+                  <div className="text-sm font-bold text-emerald-300">{game.questProgress.sealsCollected.length}/3</div>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex justify-end pt-2 border-t border-white/10">
+              <button
+                onClick={() => setShowQuestModal(false)}
+                className="px-4 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold transition cursor-pointer"
+              >
+                Continue Adventure
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Campus Buildings & Locations Guide Modal */}
       {showLandmarksModal && (
@@ -221,6 +317,15 @@ export const HUD: React.FC<HUDProps> = ({ game, onOpenInventory, onOpenOptions, 
             <img src={player.currentShield?.icon} alt="Shield" className="w-5 h-5 object-contain" />
           </div>
         </div>
+
+        {/* Mobile Quest Button */}
+        <button
+          onClick={() => setShowQuestModal(true)}
+          className="md:hidden p-1.5 sm:p-2 rounded-xl bg-black/75 border border-emerald-400/40 text-emerald-300 active:bg-white/20 hover:bg-white/10 transition shadow-lg flex items-center justify-center"
+          title={`Quest: ${quest.objective}`}
+        >
+          <ScrollText className="w-4 h-4" />
+        </button>
 
         {/* Fullscreen Toggle (Mobile Friendly) */}
         <button

@@ -29,9 +29,12 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
       // Hotkeys
       if (e.code === 'KeyC') {
         if (game.gameState === GameState.PLAY) {
+          game.keys = {};
           onOpenInventory();
         } else if (game.gameState === GameState.CHARACTER) {
+          game.keys = {};
           game.gameState = GameState.PLAY;
+          game.onStateChange();
         }
         return;
       }
@@ -41,8 +44,20 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
         return;
       }
 
-      if ((e.code === 'Escape' || e.code === 'KeyP') && game.gameState === GameState.PLAY) {
-        onOpenOptions();
+      if (e.code === 'Escape' || e.code === 'KeyP') {
+        if (game.gameState === GameState.PLAY) {
+          game.keys = {};
+          onOpenOptions();
+        } else if (
+          game.gameState === GameState.OPTIONS ||
+          game.gameState === GameState.CHARACTER ||
+          game.gameState === GameState.TRADE
+        ) {
+          game.keys = {};
+          game.gameState = GameState.PLAY;
+          sounds.playSE('cursor');
+          game.onStateChange();
+        }
         return;
       }
 
@@ -51,6 +66,10 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
           game.triggerAction();
           return;
         }
+      }
+
+      if (game.gameState !== GameState.PLAY) {
+        return;
       }
 
       game.keys[e.code] = true;

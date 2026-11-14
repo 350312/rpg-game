@@ -13,6 +13,7 @@ import { GameOverModal } from './components/GameOverModal';
 import { VictoryModal } from './components/VictoryModal';
 import { TitleScreen } from './components/TitleScreen';
 import { VirtualControls } from './components/VirtualControls';
+import { BookCutsceneModal } from './components/BookCutsceneModal';
 
 export const App: React.FC = () => {
   const [loading, setLoading] = useState(true);
@@ -204,10 +205,29 @@ export const App: React.FC = () => {
             />
           )}
 
+          {/* Book of Monpura Cutscene */}
+          {game.gameState === GameState.BOOK_CUTSCENE && (
+            <BookCutsceneModal
+              game={game}
+              onEnterMonpura={() => {
+                game.enterMonpuraFromBook();
+                forceUpdate();
+              }}
+              onCancel={() => {
+                game.gameState = GameState.PLAY;
+                forceUpdate();
+              }}
+            />
+          )}
+
           {/* Victory Modal */}
           {game.gameState === GameState.VICTORY && (
             <VictoryModal
               game={game}
+              onContinueExplore={() => {
+                game.returnToCampusEpilogue();
+                forceUpdate();
+              }}
               onPlayAgain={() => {
                 game.startNewGame();
                 forceUpdate();

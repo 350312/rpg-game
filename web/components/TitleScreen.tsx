@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { GameEngine } from '../game/engine';
+import { HERO_SPRITES } from '../game/assets';
 import { sounds } from '../game/sound';
-import { Play, RotateCcw, Volume2, Shield, Sword, Sparkles } from 'lucide-react';
+import { Play, RotateCcw, Sword } from 'lucide-react';
 
 interface TitleScreenProps {
   game: GameEngine;
@@ -9,7 +10,7 @@ interface TitleScreenProps {
   onLoadGame: () => void;
 }
 
-export const TitleScreen: React.FC<TitleScreenProps> = ({ game, onStartNew, onLoadGame }) => {
+export const TitleScreen: React.FC<TitleScreenProps> = ({ game: _game, onStartNew, onLoadGame }) => {
   const [hasSave, setHasSave] = useState(false);
 
   useEffect(() => {
@@ -43,14 +44,14 @@ export const TitleScreen: React.FC<TitleScreenProps> = ({ game, onStartNew, onLo
           </h1>
           <img src="/res/objects/blueheart.png" alt="Relic" className="w-10 h-10 object-contain pixelated animate-bounce" />
         </div>
-        <p className="text-xs md:text-sm text-sky-200 font-sans tracking-widest uppercase">
-          Classic 2D Action RPG
+        <p className="text-xs md:text-sm text-emerald-200 font-sans tracking-widest uppercase">
+          A BUP Campus &amp; Fantasy Adventure
         </p>
 
-        {/* Character Preview */}
+        {/* Main Character Preview */}
         <div className="relative my-2 p-3 bg-black/40 border border-white/20 rounded-2xl shadow-xl flex items-center justify-center">
           <img
-            src="/res/player/boy_down_1.png"
+            src={HERO_SPRITES.down[1]}
             alt="Hero"
             className="w-16 h-16 object-contain pixelated scale-125"
           />
