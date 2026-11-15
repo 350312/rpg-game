@@ -43,7 +43,12 @@ export const MerchantShop: React.FC<MerchantShopProps> = ({ game, onClose, onUpd
   };
 
   const handleSell = (item: Item) => {
-    // Cannot sell equipped weapon or shield
+    // Cannot sell quest items or equipped weapon/shield
+    if (item.type === 'quest') {
+      sounds.playSE('blocked');
+      setMessage('That is a sacred quest relic — you should never sell it!');
+      return;
+    }
     if (game.player.currentWeapon?.id === item.id || game.player.currentShield?.id === item.id) {
       sounds.playSE('blocked');
       setMessage('You cannot sell an item you currently have equipped!');
