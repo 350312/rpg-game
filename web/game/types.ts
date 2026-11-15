@@ -12,6 +12,7 @@ export enum GameState {
   MAP = 10,
   VICTORY = 11,
   BOOK_CUTSCENE = 12,
+  LIFE_LOST = 13,
 }
 
 export type Direction = 'up' | 'down' | 'left' | 'right';

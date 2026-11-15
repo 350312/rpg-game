@@ -12,11 +12,22 @@ interface TitleScreenProps {
 
 export const TitleScreen: React.FC<TitleScreenProps> = ({ game: _game, onStartNew, onLoadGame }) => {
   const [hasSave, setHasSave] = useState(false);
+  const [savedLives, setSavedLives] = useState<number>(3);
 
   useEffect(() => {
     try {
       const saveStr = localStorage.getItem('blue_boy_save');
-      if (saveStr) setHasSave(true);
+      if (saveStr) {
+        const parsed = JSON.parse(saveStr);
+        const validLives = typeof parsed.lives === 'number' ? parsed.lives : 3;
+        const validLife = typeof parsed.life === 'number' ? parsed.life : 1;
+        if (!parsed.gameOver && validLives > 0 && validLife > 0) {
+          setHasSave(true);
+          setSavedLives(Math.min(3, validLives));
+        } else {
+          setHasSave(false);
+        }
+      }
     } catch (e) {}
   }, []);
 
@@ -62,7 +73,7 @@ export const TitleScreen: React.FC<TitleScreenProps> = ({ game: _game, onStartNe
       <div className="flex flex-col gap-3 w-full max-w-xs z-10">
         <button
           onClick={handleStart}
-          className="w-full py-3 px-6 bg-gradient-to-r from-blue-600 to-sky-500 hover:from-blue-500 hover:to-sky-400 text-white font-bold rounded-xl shadow-lg border border-sky-300/40 flex items-center justify-center gap-2.5 transition transform active:scale-95 text-base tracking-wider"
+          className="w-full py-3 px-6 bg-gradient-to-r from-blue-600 to-sky-500 hover:from-blue-500 hover:to-sky-400 text-white font-bold rounded-xl shadow-lg border border-sky-300/40 flex items-center justify-center gap-2.5 transition transform active:scale-95 text-base tracking-wider cursor-pointer"
         >
           <Play className="w-5 h-5 fill-current" />
           <span>START NEW ADVENTURE</span>
@@ -71,10 +82,10 @@ export const TitleScreen: React.FC<TitleScreenProps> = ({ game: _game, onStartNe
         {hasSave && (
           <button
             onClick={handleLoad}
-            className="w-full py-2.5 px-6 bg-amber-600/80 hover:bg-amber-500 text-white font-bold rounded-xl shadow border border-amber-300/40 flex items-center justify-center gap-2 transition transform active:scale-95 text-sm tracking-wider"
+            className="w-full py-2.5 px-6 bg-amber-600/80 hover:bg-amber-500 text-white font-bold rounded-xl shadow border border-amber-300/40 flex items-center justify-center gap-2 transition transform active:scale-95 text-sm tracking-wider cursor-pointer"
           >
             <RotateCcw className="w-4 h-4" />
-            <span>CONTINUE SAVED GAME</span>
+            <span>CONTINUE ({savedLives}/3 LIVES)</span>
           </button>
         )}
       </div>

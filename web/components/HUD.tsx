@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { GameEngine } from '../game/engine';
+import { LIVES_CONFIG } from '../game/config';
 import { getQuestDescriptor } from '../game/story';
-import { Backpack, Compass, Settings, Shield, Sword, Maximize, Minimize, Building2, CheckCircle2, MapPin, X, ScrollText, BookOpen, Sparkles } from 'lucide-react';
+import { Backpack, Compass, Settings, Shield, Sword, Maximize, Minimize, Building2, CheckCircle2, MapPin, X, ScrollText, BookOpen, Sparkles, Heart, Skull } from 'lucide-react';
 
 interface HUDProps {
   game: GameEngine;
@@ -64,6 +65,24 @@ export const HUD: React.FC<HUDProps> = ({ game, onOpenInventory, onOpenOptions, 
     >
       {/* Left: Compact, Sleek Status HUD */}
       <div className="flex flex-col gap-1 bg-black/75 p-1.5 sm:p-2 rounded-xl border border-white/20 backdrop-blur-md pointer-events-auto shadow-lg max-w-[240px] sm:max-w-xs transition-all">
+        {/* Row 0: Lives (Max 3) */}
+        <div className="flex items-center justify-between gap-2 pb-1 border-b border-white/10">
+          <div className="flex items-center gap-1" aria-label={`Lives remaining: ${player.lives} of ${LIVES_CONFIG.MAX_LIVES}`}>
+            <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 mr-0.5">Lives</span>
+            {Array.from({ length: LIVES_CONFIG.MAX_LIVES }, (_, idx) => {
+              const alive = idx < player.lives;
+              return alive ? (
+                <Heart key={`life_${idx}`} className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-rose-500 fill-rose-500 drop-shadow-[0_0_4px_rgba(244,63,94,0.6)]" />
+              ) : (
+                <Skull key={`life_${idx}`} className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-zinc-600" />
+              );
+            })}
+          </div>
+          <span className={`text-[10px] sm:text-xs font-bold tabular-nums ${player.lives <= 1 ? 'text-rose-400' : 'text-amber-300'}`}>
+            {player.lives}/{LIVES_CONFIG.MAX_LIVES}
+          </span>
+        </div>
+
         {/* Row 1: Hearts & HP Number */}
         <div className="flex items-center justify-between gap-1.5">
           <div className="flex items-center gap-0.5 sm:gap-1 flex-wrap">
@@ -71,7 +90,7 @@ export const HUD: React.FC<HUDProps> = ({ game, onOpenInventory, onOpenOptions, 
               <img key={`heart_${idx}`} src={src} alt="HP" className="w-4 h-4 sm:w-5 sm:h-5 object-contain pixelated" />
             ))}
           </div>
-          <span className="text-[11px] sm:text-xs font-bold text-red-400 shrink-0">
+          <span className="text-[11px] sm:text-xs font-bold text-red-400 shrink-0 tabular-nums">
             {player.life}/{player.maxLife}
           </span>
         </div>

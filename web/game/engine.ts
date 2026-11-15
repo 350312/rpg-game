@@ -3,6 +3,7 @@ import { ITEMS, createItem } from './items';
 import { TILE_DATA, MAP_CONFIGS, loadMapGrid } from './maps';
 import { assets, CAMPUS_PROP_SPRITES, FLORA_SPRITES } from './assets';
 import { sounds } from './sound';
+import { LIVES_CONFIG, LEVEL_START_SPAWNS } from './config';
 
 export const TILE_SIZE = 48;
 export const SCREEN_WIDTH = 960;
@@ -25,6 +26,7 @@ export class GameEngine {
     defaultSpeed: 2.6,
     direction: 'up' as Direction,
     level: 1,
+    lives: LIVES_CONFIG.INITIAL_LIVES as number,
     maxLife: 6, // 3 hearts
     life: 6,
     maxMana: 4,
@@ -69,6 +71,10 @@ export class GameEngine {
   public miniMapOn: boolean = false;
   public bossDefeated: boolean = false;
   public dungeonEntrySource: 'campus' | 'monpura' = 'campus';
+  public unlockedDoors: string[] = [];
+  public openedChests: string[] = [];
+  public collectedPickups: string[] = [];
+  public lastDeathInfo: { livesRemaining: number; levelLabel: string } | null = null;
 
   public questProgress: QuestProgress = {
     stage: 0,
@@ -765,6 +771,53 @@ export class GameEngine {
     });
   }
 
+  clampLives(val: number): number {
+    return Math.max(0, Math.min(LIVES_CONFIG.MAX_LIVES, Math.floor(val)));
+  }
+
+  syncPersistentWorldState(): void {
+    // Remove already collected Sacred Seals
+    for (const sealId of this.questProgress.sealsCollected) {
+      const idx = this.objects.findIndex((o) => o.id === sealId);
+      if (idx !== -1) this.objects.splice(idx, 1);
+    }
+
+    // Remove already collected unique world pickups (Hammer, Lantern, Tent, Keys)
+    for (const pickupId of this.collectedPickups) {
+      const idx = this.objects.findIndex((o) => o.id === pickupId);
+      if (idx !== -1) this.objects.splice(idx, 1);
+    }
+
+    // Keep chests opened if already looted
+    for (const chestId of this.openedChests) {
+      const chest = this.objects.find((o) => o.id === chestId);
+      if (chest) {
+        chest.opened = true;
+        chest.image = '/res/objects/chest_opened.png';
+      }
+    }
+
+    // Keep key-unlocked doors open so player isn't softlocked
+    for (const doorId of this.unlockedDoors) {
+      const door = this.objects.find((o) => o.id === doorId);
+      if (door) {
+        door.collision = false;
+        door.destroyed = true;
+      }
+    }
+
+    // If Skeleton Lord was already defeated permanently in this run
+    if (this.bossDefeated) {
+      const boss = this.monsters.find((m) => m.id === 'boss_skeleton_lord');
+      if (boss) boss.dead = true;
+      const bossDoor = this.objects.find((o) => o.id === 'boss_iron_door');
+      if (bossDoor) {
+        bossDoor.collision = false;
+        bossDoor.destroyed = true;
+      }
+    }
+  }
+
   startNewGame() {
     this.gameState = GameState.PLAY;
     this.currentMap = 0;
@@ -775,11 +828,17 @@ export class GameEngine {
     this.player.direction = 'up';
     this.player.animFrame = 2;
     this.player.animCounter = 0;
+    this.player.lives = LIVES_CONFIG.INITIAL_LIVES;
     this.player.life = this.player.maxLife;
     this.player.mana = this.player.maxMana;
     this.player.level = 1;
     this.player.exp = 0;
     this.player.coin = 50;
+    this.player.hasLantern = false;
+    this.player.invincibleTimer = 0;
+    this.player.attacking = false;
+    this.player.guarding = false;
+    this.player.moving = false;
     this.player.currentWeapon = createItem('sword_normal');
     this.player.currentShield = createItem('shield_wood');
     this.player.inventory = [
@@ -790,6 +849,10 @@ export class GameEngine {
     ];
     this.bossDefeated = false;
     this.dungeonEntrySource = 'campus';
+    this.unlockedDoors = [];
+    this.openedChests = [];
+    this.collectedPickups = [];
+    this.lastDeathInfo = null;
     this.questProgress = {
       stage: 0,
       sealsCollected: [],
@@ -807,22 +870,122 @@ export class GameEngine {
     this.previousEventY = this.player.worldY;
     this.collectedLocations = new Set();
     this.lastLocationName = '';
+    try {
+      localStorage.removeItem('blue_boy_save');
+    } catch (_) {}
     this.setupEntities();
     sounds.playMusic('theme');
     this.onStateChange();
   }
 
+  restartCurrentLevel(): void {
+    const spawn = LEVEL_START_SPAWNS[this.currentMap] || LEVEL_START_SPAWNS[0];
+    this.keys = {};
+    this.player.moving = false;
+    this.player.attacking = false;
+    this.player.guarding = false;
+    this.player.attackTimer = 0;
+    // Restore HP & Mana for the new attempt only — never add extra lives
+    this.player.lives = this.clampLives(this.player.lives);
+    this.player.life = this.player.maxLife;
+    this.player.mana = this.player.maxMana;
+    this.player.invincibleTimer = LIVES_CONFIG.RESPAWN_INVINCIBILITY_FRAMES;
+    this.player.worldX = spawn.col * TILE_SIZE;
+    this.player.worldY = spawn.row * TILE_SIZE;
+    this.player.direction = spawn.direction;
+    this.previousEventX = this.player.worldX;
+    this.previousEventY = this.player.worldY;
+    this.canTouchEvent = true;
+    this.transitionStateCounter = 0;
+    this.transitionAlpha = 0;
+
+    // Reset all enemies, bosses, projectiles, hazards, and level puzzles
+    this.setupEntities();
+    this.syncPersistentWorldState();
+
+    this.gameState = GameState.PLAY;
+    sounds.playMusic(spawn.music);
+    this.onStateChange();
+  }
+
+  restartFromLevelOne(): void {
+    this.startNewGame();
+  }
+
+  persistDeathPenalty(isGameOver: boolean): void {
+    try {
+      if (isGameOver) {
+        // Mark run as ended so refreshing the page cannot bypass Game Over
+        localStorage.setItem(
+          'blue_boy_save',
+          JSON.stringify({
+            saveVersion: 2,
+            gameOver: true,
+            lives: 0,
+          })
+        );
+        return;
+      }
+
+      const spawn = LEVEL_START_SPAWNS[this.currentMap] || LEVEL_START_SPAWNS[0];
+      const penaltySave = {
+        saveVersion: 2,
+        gameOver: false,
+        worldX: spawn.col * TILE_SIZE,
+        worldY: spawn.row * TILE_SIZE,
+        direction: spawn.direction,
+        currentMap: this.currentMap,
+        lives: this.clampLives(this.player.lives),
+        life: this.player.maxLife,
+        maxLife: this.player.maxLife,
+        mana: this.player.maxMana,
+        maxMana: this.player.maxMana,
+        level: this.player.level,
+        exp: this.player.exp,
+        nextLevelExp: this.player.nextLevelExp,
+        strength: this.player.strength,
+        dexterity: this.player.dexterity,
+        hasLantern: this.player.hasLantern,
+        coin: this.player.coin,
+        inventory: this.player.inventory,
+        currentWeapon: this.player.currentWeapon,
+        currentShield: this.player.currentShield,
+        bossDefeated: this.bossDefeated,
+        dungeonEntrySource: this.dungeonEntrySource,
+        questProgress: this.questProgress,
+        collectedLocations: Array.from(this.collectedLocations),
+        unlockedDoors: this.unlockedDoors,
+        openedChests: this.openedChests,
+        collectedPickups: this.collectedPickups,
+      };
+      localStorage.setItem('blue_boy_save', JSON.stringify(penaltySave));
+    } catch (e) {
+      console.warn('Could not persist death penalty:', e);
+    }
+  }
+
   saveGame(): void {
+    if (this.player.life <= 0 || this.player.lives <= 0) {
+      return;
+    }
     const saveData = {
+      saveVersion: 2,
+      gameOver: false,
       worldX: this.player.worldX,
       worldY: this.player.worldY,
+      direction: this.player.direction,
       currentMap: this.currentMap,
+      lives: this.clampLives(this.player.lives),
       life: this.player.life,
       maxLife: this.player.maxLife,
       mana: this.player.mana,
       maxMana: this.player.maxMana,
       level: this.player.level,
       exp: this.player.exp,
+      nextLevelExp: this.player.nextLevelExp,
+      strength: this.player.strength,
+      dexterity: this.player.dexterity,
+      hasLantern: this.player.hasLantern,
       coin: this.player.coin,
       inventory: this.player.inventory,
       currentWeapon: this.player.currentWeapon,
@@ -831,6 +994,9 @@ export class GameEngine {
       dungeonEntrySource: this.dungeonEntrySource,
       questProgress: this.questProgress,
       collectedLocations: Array.from(this.collectedLocations),
+      unlockedDoors: this.unlockedDoors,
+      openedChests: this.openedChests,
+      collectedPickups: this.collectedPickups,
     };
     try {
       localStorage.setItem('blue_boy_save', JSON.stringify(saveData));
@@ -846,22 +1012,43 @@ export class GameEngine {
       const dataStr = localStorage.getItem('blue_boy_save');
       if (!dataStr) return false;
       const data = JSON.parse(dataStr);
+
+      // Anti-exploit: dead / 0-lives saves cannot be resumed
+      if (data.gameOver || (typeof data.lives === 'number' && data.lives <= 0) || (typeof data.life === 'number' && data.life <= 0)) {
+        localStorage.removeItem('blue_boy_save');
+        return false;
+      }
+
       this.setupEntities();
-      this.player.worldX = data.worldX;
-      this.player.worldY = data.worldY;
-      this.currentMap = data.currentMap;
-      this.player.life = data.life;
-      this.player.maxLife = data.maxLife;
-      this.player.mana = data.mana;
-      this.player.maxMana = data.maxMana;
-      this.player.level = data.level;
-      this.player.exp = data.exp;
-      this.player.coin = data.coin;
-      this.player.inventory = data.inventory;
-      this.player.currentWeapon = data.currentWeapon;
-      this.player.currentShield = data.currentShield;
+      this.player.worldX = data.worldX ?? 23 * TILE_SIZE;
+      this.player.worldY = data.worldY ?? 46 * TILE_SIZE;
+      this.player.direction = data.direction ?? 'up';
+      this.currentMap = data.currentMap ?? 0;
+      // Migrate legacy v1 saves without `lives` cleanly, capped at MAX_LIVES
+      this.player.lives =
+        typeof data.lives === 'number'
+          ? this.clampLives(data.lives)
+          : LIVES_CONFIG.INITIAL_LIVES;
+      this.player.maxLife = data.maxLife ?? 6;
+      this.player.life = Math.min(this.player.maxLife, data.life ?? this.player.maxLife);
+      this.player.maxMana = data.maxMana ?? 4;
+      this.player.mana = Math.min(this.player.maxMana, data.mana ?? this.player.maxMana);
+      this.player.level = data.level ?? 1;
+      this.player.exp = data.exp ?? 0;
+      this.player.nextLevelExp = data.nextLevelExp ?? 10;
+      this.player.strength = data.strength ?? 1;
+      this.player.dexterity = data.dexterity ?? 1;
+      this.player.hasLantern = !!data.hasLantern || !!(data.inventory || []).some((i: Item) => i.id === 'lantern');
+      this.player.coin = data.coin ?? 50;
+      this.player.inventory = data.inventory || [];
+      this.player.currentWeapon = data.currentWeapon || createItem('sword_normal');
+      this.player.currentShield = data.currentShield || createItem('shield_wood');
       this.bossDefeated = !!data.bossDefeated;
       this.dungeonEntrySource = data.dungeonEntrySource === 'monpura' ? 'monpura' : 'campus';
+      this.unlockedDoors = Array.isArray(data.unlockedDoors) ? data.unlockedDoors : [];
+      this.openedChests = Array.isArray(data.openedChests) ? data.openedChests : [];
+      this.collectedPickups = Array.isArray(data.collectedPickups) ? data.collectedPickups : [];
+
       if (data.questProgress) {
         this.questProgress = {
           stage: data.questProgress.stage ?? 0,
@@ -874,14 +1061,15 @@ export class GameEngine {
           talkedToElder: !!data.questProgress.talkedToElder,
         };
       }
-      // Remove already collected seals from the world
-      for (const sealId of this.questProgress.sealsCollected) {
-        const idx = this.objects.findIndex((o) => o.id === sealId);
-        if (idx !== -1) this.objects.splice(idx, 1);
-      }
+
       this.collectedLocations = new Set(data.collectedLocations || []);
+      this.syncPersistentWorldState();
+      this.lastDeathInfo = null;
+      this.previousEventX = this.player.worldX;
+      this.previousEventY = this.player.worldY;
       this.gameState = GameState.PLAY;
-      sounds.playMusic('theme');
+      const spawn = LEVEL_START_SPAWNS[this.currentMap];
+      sounds.playMusic(spawn?.music || 'theme');
       this.onStateChange();
       return true;
     } catch (e) {
@@ -1466,9 +1654,31 @@ export class GameEngine {
     this.spawnParticles(this.player.worldX + 24, this.player.worldY + 24, '#ef4444', 10);
 
     if (this.player.life <= 0) {
-      this.gameState = GameState.GAME_OVER;
+      this.keys = {};
+      this.player.moving = false;
+      this.player.attacking = false;
+      this.player.guarding = false;
+      this.player.lives = this.clampLives(this.player.lives - 1);
       sounds.stopMusic();
       sounds.playSE('gameover');
+
+      const spawn = LEVEL_START_SPAWNS[this.currentMap] || LEVEL_START_SPAWNS[0];
+      this.lastDeathInfo = {
+        livesRemaining: this.player.lives,
+        levelLabel: spawn.label,
+      };
+
+      if (this.player.lives > 0) {
+        this.gameState = GameState.LIFE_LOST;
+        if (LIVES_CONFIG.PENALIZE_RELOAD_ON_DEATH) {
+          this.persistDeathPenalty(false);
+        }
+      } else {
+        this.gameState = GameState.GAME_OVER;
+        if (LIVES_CONFIG.PENALIZE_RELOAD_ON_DEATH) {
+          this.persistDeathPenalty(true);
+        }
+      }
       this.onStateChange();
     }
   }
@@ -1803,6 +2013,9 @@ export class GameEngine {
         } else if (obj.type === 'chest' && !obj.opened) {
           obj.opened = true;
           obj.image = '/res/objects/chest_opened.png';
+          if (!this.openedChests.includes(obj.id)) {
+            this.openedChests.push(obj.id);
+          }
           sounds.playSE('fanfare');
           if (obj.loot) {
             this.player.inventory.push({ ...obj.loot });
@@ -1823,6 +2036,9 @@ export class GameEngine {
             }
             obj.collision = false;
             obj.destroyed = true;
+            if (!this.unlockedDoors.includes(obj.id)) {
+              this.unlockedDoors.push(obj.id);
+            }
             sounds.playSE('unlock');
             this.addDamageNumber(obj.worldX + 24, obj.worldY - 10, 'Door Unlocked!', '#4ade80');
             this.onStateChange();
@@ -2070,6 +2286,9 @@ export class GameEngine {
           } else {
             this.player.inventory.push(createItem('key', 1));
           }
+          if (!this.collectedPickups.includes(obj.id)) {
+            this.collectedPickups.push(obj.id);
+          }
           sounds.playSE('coin');
           const locText = obj.id === 'key_1' ? 'Key near FASS Building!' : obj.id === 'key_2' ? 'Key near FMS Building!' : 'Obtained Key!';
           this.addDamageNumber(obj.worldX + 24, obj.worldY - 10, locText, '#fbbf24');
@@ -2078,6 +2297,9 @@ export class GameEngine {
         } else if (obj.type === 'axe' || obj.type === 'lantern' || obj.type === 'tent') {
           this.player.inventory.push(createItem(obj.type, 1));
           if (obj.type === 'lantern') this.player.hasLantern = true;
+          if (!this.collectedPickups.includes(obj.id)) {
+            this.collectedPickups.push(obj.id);
+          }
           sounds.playSE('powerup');
           this.dialogueSpeaker = 'Item Discovered';
           if (obj.id === 'axe_1') {

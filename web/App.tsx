@@ -185,16 +185,17 @@ export const App: React.FC = () => {
             />
           )}
 
-          {/* Game Over Modal */}
-          {game.gameState === GameState.GAME_OVER && (
+          {/* Life Lost / Game Over Modal */}
+          {(game.gameState === GameState.LIFE_LOST || game.gameState === GameState.GAME_OVER) && (
             <GameOverModal
               game={game}
-              onRetry={() => {
-                game.player.life = game.player.maxLife;
-                game.player.mana = game.player.maxMana;
-                game.player.invincibleTimer = 60;
-                game.gameState = GameState.PLAY;
-                sounds.playMusic('theme');
+              mode={game.gameState === GameState.LIFE_LOST ? 'life_lost' : 'game_over'}
+              onRestartLevel={() => {
+                game.restartCurrentLevel();
+                forceUpdate();
+              }}
+              onRestartGame={() => {
+                game.restartFromLevelOne();
                 forceUpdate();
               }}
               onTitle={() => {
