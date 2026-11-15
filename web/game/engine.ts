@@ -1699,7 +1699,7 @@ export class GameEngine {
 
     for (const obj of this.objects) {
       if (obj.map !== this.currentMap || obj.destroyed) continue;
-      if ((obj.type === 'chest' && !obj.opened) || obj.type === 'monpura_book' || obj.type === 'lore_book' || obj.type === 'seal') {
+      if ((obj.type === 'chest' && !obj.opened) || obj.type === 'door' || obj.type === 'monpura_book' || obj.type === 'lore_book' || obj.type === 'seal') {
         const oCenterX = obj.worldX + TILE_SIZE / 2;
         const oCenterY = obj.worldY + TILE_SIZE / 2;
         if (Math.hypot(pCenterX - oCenterX, pCenterY - oCenterY) < 68) {
@@ -2192,7 +2192,11 @@ export class GameEngine {
         if (npc.isPushable) {
           const rockNextX = npc.worldX + pushDx;
           const rockNextY = npc.worldY + pushDy;
-          if (!this.checkTileCollision(rockNextX, rockNextY, npc.solidArea)) {
+          if (
+            !this.checkTileCollision(rockNextX, rockNextY, npc.solidArea) &&
+            !this.checkInteractiveTileCollision(rockNextX, rockNextY, npc.solidArea) &&
+            !this.checkObjectCollision(rockNextX, rockNextY, npc.solidArea)
+          ) {
             npc.worldX = rockNextX;
             npc.worldY = rockNextY;
             sounds.playSE('chipwall');
